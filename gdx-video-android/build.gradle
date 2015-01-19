@@ -1,0 +1,13 @@
+apply plugin: "java"
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ["src/"]
+        }
+    }
+}
+
+eclipse.project {
+    name = projectGroup + "-gdx-video-android"
+}

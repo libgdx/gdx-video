@@ -1,0 +1,1 @@
+include "gdx-video", "gdx-video-desktop", "gdx-video-android"

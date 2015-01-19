@@ -1,0 +1,67 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        mavenLocal()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:0.14+"
+    }
+}
+
+ext {
+    gdxVersion = "1.5.3"
+    projectGroup = "gdx-video"
+}
+
+allprojects {
+    apply plugin: 'eclipse'
+    apply plugin: 'idea'
+    apply plugin: 'java'
+
+    repositories {
+        mavenCentral()
+        maven { url "https://oss.sonatype.org/content/repositories/releases/" }
+        maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
+    }
+}
+
+project(":gdx-video") {
+
+    dependencies {
+        compile "com.badlogicgames.gdx:gdx:$gdxVersion"
+    }
+
+}
+
+project(":gdx-video-desktop") {
+
+    configurations {
+        excluded
+        compile.extendsFrom excluded
+    }
+
+    dependencies {
+        compile project(":gdx-video")
+        excluded "com.badlogicgames.gdx:gdx-jnigen:$gdxVersion"
+        compile "com.badlogicgames.gdx:gdx-backend-lwjgl:$gdxVersion"
+        compile "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+    }
+
+}
+
+project(":gdx-video-android") {
+
+    dependencies {
+        compile project(":gdx-video")
+        compile files("libs/android-4.4.jar")
+        compile "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
+        compile "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi"
+        compile "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
+    }
+
+}
+
+
+tasks.eclipse.doLast {
+    delete ".project"
+}
