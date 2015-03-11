@@ -125,7 +125,11 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 				throw new FileNotFoundException("Could not find file: " + file.path());
 		  }
 
-		  player = new MediaPlayer();
+          if(player != null)
+             player.release();
+
+          player = new MediaPlayer();
+          done = false;
 
 		  player.setOnPreparedListener(new OnPreparedListener() {
 				@Override public void onPrepared (MediaPlayer mp) {
@@ -260,6 +264,8 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
 	 @Override public void dispose () {
 		  stop();
+         if(player != null)
+             player.release();
 
 		  videoTexture.detachFromGLContext();
 
