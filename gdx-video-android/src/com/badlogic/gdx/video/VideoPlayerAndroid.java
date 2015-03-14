@@ -29,6 +29,8 @@ import android.media.MediaPlayer.OnErrorListener;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.Surface;
 
@@ -95,6 +97,16 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	 CompletionListener completionListener;
 	 private int primitiveType = GL20.GL_TRIANGLES;
 
+    /**
+     * Used for sending mediaplayer tasks to the Main Looper
+     */
+    private static Handler handler;
+
+    /**
+     * Lock used for waiting if the player was not yet created.
+     */
+    Object lock = new Object();
+
 	 public VideoPlayerAndroid () {
 		  this(new FitViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight()));
 	 }
@@ -110,6 +122,8 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		  mesh.setVertices(new float[] {0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0});
 		  //@formatter:on
 		  mesh.setIndices(new short[] {0, 1, 2, 2, 3, 0});
+
+         initializeMediaPlayer();
 	 }
 
 	 public VideoPlayerAndroid (Camera cam, Mesh mesh, int primitiveType) {
@@ -118,17 +132,44 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		  this.primitiveType = primitiveType;
 		  customMesh = true;
 		  setupRenderTexture();
+
+         initializeMediaPlayer();
 	 }
+
+    private void initializeMediaPlayer() {
+        if(handler == null)
+            handler = new Handler(Looper.getMainLooper());
+
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                synchronized (lock) {
+                    player = new MediaPlayer();
+                    lock.notify();
+                }
+            }
+        });
+    }
 
 	 @Override public boolean play (final FileHandle file) throws FileNotFoundException {
 		  if (!file.exists()) {
 				throw new FileNotFoundException("Could not find file: " + file.path());
 		  }
 
-          if(player != null)
-             player.release();
+         //Wait for the player to be created. (If the Looper thread is busy,
+         if(player == null) {
+             synchronized (lock) {
+                 while(player == null) {
+                     try {
+                         lock.wait();
+                     } catch (InterruptedException e) {
+                         return false;
+                     }
+                 }
+             }
+         }
 
-          player = new MediaPlayer();
+          player.reset();
           done = false;
 
 		  player.setOnPreparedListener(new OnPreparedListener() {
