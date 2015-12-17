@@ -58,25 +58,25 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	 private static final String UNIFORM_TEXTURE = "texture";
 	 private static final String UNIFORM_CAMERATRANSFORM = "camTransform";
 
-	 //@formatter:off
-	 String vertexShaderCode = "attribute vec4 a_position;    \n" +
-		 "attribute vec2 " + ATTRIBUTE_TEXCOORDINATE + ";" +
-		 "uniform mat4 " + UNIFORM_CAMERATRANSFORM + ";" +
-		 "varying vec2 " + VARYING_TEXCOORDINATE + ";" +
-		 "void main()                   \n" +
-		 "{                             \n" +
-		 "   gl_Position = " + UNIFORM_CAMERATRANSFORM + " * a_position;  \n" +
-		 "   varTexCoordinate = " + ATTRIBUTE_TEXCOORDINATE + ";\n" +
-		 "}                             \n";
+	//@formatter:off
+	String vertexShaderCode = "attribute highp vec4 a_position; \n" +
+		"attribute highp vec2 " + ATTRIBUTE_TEXCOORDINATE + ";" +
+		"uniform highp mat4 " + UNIFORM_CAMERATRANSFORM + ";" +
+		"varying highp vec2 " + VARYING_TEXCOORDINATE + ";" +
+		"void main() \n" +
+		"{ \n" +
+		" gl_Position = " + UNIFORM_CAMERATRANSFORM + " * a_position; \n" +
+		" varTexCoordinate = " + ATTRIBUTE_TEXCOORDINATE + ";\n" +
+		"} \n";
 
-	 String fragmentShaderCode = "#extension GL_OES_EGL_image_external : require\n" +
-		 "uniform samplerExternalOES " + UNIFORM_TEXTURE + ";" +
-		 "varying vec2 " + VARYING_TEXCOORDINATE + ";" +
-		 "void main()                 \n" +
-		 "{                           \n" +
-		 "  gl_FragColor = texture2D(" + UNIFORM_TEXTURE + ", " + VARYING_TEXCOORDINATE + ");	\n" +
-		 "}";
-	 //@formatter:on
+	String fragmentShaderCode = "#extension GL_OES_EGL_image_external : require\n" +
+		"uniform samplerExternalOES " + UNIFORM_TEXTURE + ";" +
+		"varying highp vec2 " + VARYING_TEXCOORDINATE + ";" +
+		"void main()                 \n" +
+		"{                           \n" +
+		"  gl_FragColor = texture2D(" + UNIFORM_TEXTURE + ", " + VARYING_TEXCOORDINATE + ");    \n" +
+		"}";
+	//@formatter:on
 
 	 private ShaderProgram shader;
 	 private int[] textures = new int[1];
