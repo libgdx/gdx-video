@@ -186,7 +186,6 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
 					 // set viewport world dimensions according to video dimensions and viewport type
 					 viewport.setWorldSize(width, height);
-					 cam.position.set(cam.viewportWidth / 2, cam.viewportHeight / 2, 0);
 					 viewport.apply();
 
 					 prepared = true;
