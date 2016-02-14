@@ -186,8 +186,12 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
 					 // set viewport world dimensions according to video dimensions and viewport type
 					 viewport.setWorldSize(width, height);
-					 cam.position.set(cam.viewportWidth / 2, cam.viewportHeight / 2, 0);
-					 viewport.apply();
+					 Gdx.app.postRunnable(new Runnable() {
+						 @Override public void run() {
+							 // force viewport update to let scaling take effect
+							 viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+						 }
+					 });
 
 					 prepared = true;
 					 if (sizeListener != null) {
