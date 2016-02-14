@@ -186,6 +186,15 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 						 new float[] {x, y, 0, 0, 1, x + width, y, 0, 1, 1, x + width, y + height, 0, 1, 0, x, y + height, 0, 0, 0});
 					 //@formatter:on
 
+					 // set viewport world dimensions according to video dimensions and viewport type
+					 viewport.setWorldSize(width, height);
+					 Gdx.app.postRunnable(new Runnable() {
+						 @Override public void run() {
+							 // force viewport update to let scaling take effect
+							 viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+						 }
+					 });
+
 					 prepared = true;
 					 if (sizeListener != null) {
 						  sizeListener.onVideoSize(width, height);
