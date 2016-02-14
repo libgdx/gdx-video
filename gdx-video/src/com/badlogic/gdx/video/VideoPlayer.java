@@ -137,4 +137,16 @@ public interface VideoPlayer extends Disposable {
 	  */
 	 @Override void dispose ();
 
+	/**
+	 * This will update the volume of the audio associated with the currently playing video.
+	 * @param volume The new volume value in range from 0.0 (mute) to 1.0 (maximum)
+	 */
+	void setVolume(float volume);
+
+	/**
+	 * This will return the volume of the audio associated with the currently playing video.
+	 * @return The volume of the audio in range from 0.0 (mute) to 1.0 (maximum)
+	 */
+	float getVolume();
+
 }
