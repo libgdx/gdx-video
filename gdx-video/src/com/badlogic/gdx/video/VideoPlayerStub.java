@@ -67,4 +67,9 @@ class VideoPlayerStub implements VideoPlayer {
 	 @Override public void dispose () {
 	 }
 
+	 @Override
+	 public void setVolume(float volume) {}
+
+	 @Override
+	 public float getVolume() { return 0; }
 }

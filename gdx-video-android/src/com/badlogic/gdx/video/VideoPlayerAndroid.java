@@ -97,6 +97,8 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	 CompletionListener completionListener;
 	 private int primitiveType = GL20.GL_TRIANGLES;
 
+	 private float currentVolume = 1.0f;
+
     /**
      * Used for sending mediaplayer tasks to the Main Looper
      */
@@ -346,5 +348,16 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	 @Override public boolean isPlaying () {
 		  return player.isPlaying();
 	 }
+
+	 @Override
+	 public void setVolume(float volume) {
+		 currentVolume = volume;
+		 player.setVolume(volume, volume);
+	 }
+
+	 @Override
+	 public float getVolume() {
+		return currentVolume;
+	}
 
 }

@@ -342,4 +342,14 @@ public class VideoPlayerDesktop implements VideoPlayer {
 	 @Override public boolean isPlaying () {
 		  return playing;
 	 }
+
+	 @Override
+	 public void setVolume(float volume) {
+		audio.setVolume(volume);
+	}
+
+	 @Override
+	 public float getVolume() {
+		return audio.getVolume();
+	}
 }
