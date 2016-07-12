@@ -221,11 +221,11 @@ public class VideoPlayerDesktop implements VideoPlayer {
 						  }
 						  texture = new Texture(image);
 					 } else {
+						  playing = false;
+						  renderTexture();
 						  if (completionListener != null) {
 								completionListener.onCompletionListener(currentFile);
 						  }
-						  playing = false;
-						  renderTexture();
 						  return false;
 					 }
 				}
@@ -239,8 +239,10 @@ public class VideoPlayerDesktop implements VideoPlayer {
 					 showAlreadyDecodedFrame = true;
 				}
 
-				renderTexture();
-
+		  }
+		  
+		  if (texture != null) {
+			  renderTexture();
 		  }
 		  return true;
 	 }
