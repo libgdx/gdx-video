@@ -356,4 +356,9 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		  return player.isPlaying();
 	 }
 
+	 @Override
+	 public int getCurrentTimestamp () {
+		 return player.getCurrentPosition();
+	 }
+
 }

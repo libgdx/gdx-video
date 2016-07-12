@@ -342,4 +342,9 @@ public class VideoPlayerDesktop implements VideoPlayer {
 	 @Override public boolean isPlaying () {
 		  return playing;
 	 }
+
+	 @Override
+	 public int getCurrentTimestamp () {
+		  return (int)(decoder.getCurrentFrameTimestamp() * 1000);
+	 }
 }
