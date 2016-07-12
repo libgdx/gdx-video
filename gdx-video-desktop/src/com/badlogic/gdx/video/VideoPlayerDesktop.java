@@ -302,7 +302,9 @@ public class VideoPlayerDesktop implements VideoPlayer {
 	 @Override public void pause () {
 		  if (!paused) {
 				paused = true;
-				audio.pause();
+				if (audio != null) {
+					audio.pause();
+				}
 				timeBeforePause = System.currentTimeMillis() - startTime;
 		  }
 	 }
@@ -310,7 +312,9 @@ public class VideoPlayerDesktop implements VideoPlayer {
 	 @Override public void resume () {
 		  if (paused) {
 				paused = false;
-				audio.play();
+				if (audio != null) {
+					audio.play();
+				}
 				startTime = System.currentTimeMillis() - timeBeforePause;
 		  }
 	 }
