@@ -63,6 +63,10 @@ class VideoPlayerStub implements VideoPlayer {
 	 @Override public boolean isPlaying () {
 		  return false;
 	 }
+	 
+	 @Override public int getCurrentTimestamp () {
+			return 0;
+	 }
 
 	 @Override public void dispose () {
 	 }

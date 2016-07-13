@@ -221,11 +221,11 @@ public class VideoPlayerDesktop implements VideoPlayer {
 						  }
 						  texture = new Texture(image);
 					 } else {
+						  playing = false;
+						  renderTexture();
 						  if (completionListener != null) {
 								completionListener.onCompletionListener(currentFile);
 						  }
-						  playing = false;
-						  renderTexture();
 						  return false;
 					 }
 				}
@@ -239,8 +239,10 @@ public class VideoPlayerDesktop implements VideoPlayer {
 					 showAlreadyDecodedFrame = true;
 				}
 
-				renderTexture();
-
+		  }
+		  
+		  if (texture != null) {
+			  renderTexture();
 		  }
 		  return true;
 	 }
@@ -302,7 +304,9 @@ public class VideoPlayerDesktop implements VideoPlayer {
 	 @Override public void pause () {
 		  if (!paused) {
 				paused = true;
-				audio.pause();
+				if (audio != null) {
+					audio.pause();
+				}
 				timeBeforePause = System.currentTimeMillis() - startTime;
 		  }
 	 }
@@ -310,7 +314,9 @@ public class VideoPlayerDesktop implements VideoPlayer {
 	 @Override public void resume () {
 		  if (paused) {
 				paused = false;
-				audio.play();
+				if (audio != null) {
+					audio.play();
+				}
 				startTime = System.currentTimeMillis() - timeBeforePause;
 		  }
 	 }
@@ -341,5 +347,10 @@ public class VideoPlayerDesktop implements VideoPlayer {
 
 	 @Override public boolean isPlaying () {
 		  return playing;
+	 }
+
+	 @Override
+	 public int getCurrentTimestamp () {
+		  return (int)(decoder.getCurrentFrameTimestamp() * 1000);
 	 }
 }
