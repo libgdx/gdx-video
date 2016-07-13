@@ -367,6 +367,10 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	 @Override
 	 public float getVolume() {
 		return currentVolume;
-	}
+	 }
+
+	 @Override public int getCurrentTimestamp () {
+		  return player.getCurrentPosition();
+	 }
 
 }

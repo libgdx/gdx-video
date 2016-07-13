@@ -131,6 +131,13 @@ public interface VideoPlayer extends Disposable {
 	  * @return whether the video is still playing
 	  */
 	 boolean isPlaying ();
+	 
+	 /**
+	  * This will return the the time passed.
+	  * 
+	  * @return the time elapsed in milliseconds
+	  */
+	 int getCurrentTimestamp();
 
 	 /**
 	  * Disposes the VideoPlayer and ensures all buffers and resources are invalidated and disposed.
