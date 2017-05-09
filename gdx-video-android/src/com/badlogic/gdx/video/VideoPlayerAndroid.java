@@ -127,6 +127,8 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	 }
 
 	 public VideoPlayerAndroid (Camera cam, Mesh mesh, int primitiveType) {
+		  shader = new ShaderProgram(vertexShaderCode, fragmentShaderCode);
+		 
 		  this.cam = cam;
 		  this.mesh = mesh;
 		  this.primitiveType = primitiveType;
