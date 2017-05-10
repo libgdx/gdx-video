@@ -126,7 +126,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	 }
 
 	 public VideoPlayerAndroid (Camera cam, Mesh mesh, int primitiveType) {
-		  this.viewport = new FitViewport(cam.viewportWidth, cam.viewportHeight);
+		  this.viewport = new FitViewport(cam.viewportWidth, cam.viewportHeight, cam);
 		  this.cam = cam;
 		  this.mesh = mesh;
 		  this.primitiveType = primitiveType;
