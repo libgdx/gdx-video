@@ -126,7 +126,6 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	 }
 
 	 public VideoPlayerAndroid (Camera cam, Mesh mesh, int primitiveType) {
-		  this.viewport = new FitViewport(cam.viewportWidth, cam.viewportHeight, cam);
 		  this.cam = cam;
 		  this.mesh = mesh;
 		  this.primitiveType = primitiveType;
@@ -185,9 +184,16 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 					 //@formatter:on
 
 					 // set viewport world dimensions according to video dimensions and viewport type
-					 viewport.setWorldSize(width, height);
-					 viewport.apply();
-
+					if(viewport != null) {
+					 	viewport.setWorldSize(width, height);
+						Gdx.app.postRunnable(new Runnable() {
+							@Override
+							public void run() {
+								// force viewport update to let scaling take effect
+								viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+							}
+					 	});
+					 }
 					 prepared = true;
 					 if (sizeListener != null) {
 						  sizeListener.onVideoSize(width, height);
