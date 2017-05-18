@@ -78,7 +78,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		"}";
 	//@formatter:on
 
-	 private ShaderProgram shader;
+	 private ShaderProgram shader = new ShaderProgram(vertexShaderCode, fragmentShaderCode);
 	 private int[] textures = new int[1];
 	 private SurfaceTexture videoTexture;
 
@@ -114,7 +114,6 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	 }
 
 	 public VideoPlayerAndroid (Viewport viewport) {
-		  shader = new ShaderProgram(vertexShaderCode, fragmentShaderCode);
 		  setupRenderTexture();
 
 		  this.viewport = viewport;
@@ -182,19 +181,21 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 					 float height = mp.getVideoHeight();
 
 					 //@formatter:off
-					 mesh.setVertices(
-						 new float[] {x, y, 0, 0, 1, x + width, y, 0, 1, 1, x + width, y + height, 0, 1, 0, x, y + height, 0, 0, 0});
+					if(!customMesh)
+						mesh.setVertices(new float[] {x, y, 0, 0, 1, x + width, y, 0, 1, 1, x + width, y + height, 0, 1, 0, x, y + height, 0, 0, 0});
 					 //@formatter:on
 
 					 // set viewport world dimensions according to video dimensions and viewport type
-					 viewport.setWorldSize(width, height);
-					 Gdx.app.postRunnable(new Runnable() {
-						 @Override public void run() {
-							 // force viewport update to let scaling take effect
-							 viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-						 }
-					 });
-
+					if(viewport != null) {
+					 	viewport.setWorldSize(width, height);
+						Gdx.app.postRunnable(new Runnable() {
+							@Override
+							public void run() {
+								// force viewport update to let scaling take effect
+								viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+							}
+					 	});
+					 }
 					 prepared = true;
 					 if (sizeListener != null) {
 						  sizeListener.onVideoSize(width, height);
