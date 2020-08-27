@@ -1,0 +1,23 @@
+language: java
+
+sudo: required
+
+dist: trusty
+
+addons:
+  apt:
+    packages:
+    - gcc-multilib
+    - g++-multilib
+    - yasm
+    - mingw-w64
+    - gcc-mingw-w64
+    - gcc-mingw-w64-i686
+    - gcc-mingw-w64-x86-64
+    - g++-mingw-w64
+    - g++-mingw-w64-i686
+    - g++-mingw-w64-x86-64
+    - binutils-mingw-w64-i686
+    - binutils-mingw-w64-x86-64
+
+before_install: ant -f gdx-video-desktop/jni/build.xml
