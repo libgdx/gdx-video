@@ -19,7 +19,7 @@ package com.badlogic.gdx.video;
 import java.nio.ByteBuffer;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.backends.lwjgl.audio.OpenALAudio;
+import com.badlogic.gdx.backends.lwjgl.audio.OpenALLwjglAudio;
 import com.badlogic.gdx.backends.lwjgl.audio.OpenALMusic;
 
 /**
@@ -32,7 +32,7 @@ class RawMusic extends OpenALMusic {
 	 ByteBuffer backBuffer;
 
 	 public RawMusic (VideoDecoder decoder, ByteBuffer buffer, int channels, int sampleRate) {
-		  super((OpenALAudio)Gdx.audio, null);
+		  super((OpenALLwjglAudio) Gdx.audio, null);
 		  this.decoder = decoder;
 		  backBuffer = buffer;
 		  setup(channels, sampleRate);

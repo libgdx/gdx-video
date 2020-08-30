@@ -8,6 +8,10 @@ sourceSets {
     }
 }
 
+dependencies {
+    implementation "com.badlogicgames.gdx:gdx:$gdxVersion"
+}
+
 eclipse.project {
-    name = projectGroup + "-gdx-video"
+    name = projectGroup + "-gdx-video-core"
 }

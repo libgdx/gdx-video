@@ -1,1 +1,2 @@
 include "gdx-video", "gdx-video-desktop", "gdx-video-android"
+project(":gdx-video").name = "gdx-video-core"

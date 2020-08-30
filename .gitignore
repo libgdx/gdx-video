@@ -10,6 +10,7 @@ obj/
 gwt-unitCache/
 war/
 gen/
+build/
 armeabi/
 armeabi-v7a/
 linux32/
@@ -37,6 +38,7 @@ libgdx-*.zip.MD5
 
 *.iml
 /.idea/
+/.gradle/
 
 #core & extension libs/ folders that have no 3rd party dependencies in them
 /gdx/libs
@@ -53,3 +55,5 @@ libgdx-*.zip.MD5
 
 #ensure gdx-setup.jar works properly
 !/extensions/gdx-setup/src/com/badlogic/gdx/setup/resources/gwt/war
+
+local.properties

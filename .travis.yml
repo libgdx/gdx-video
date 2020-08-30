@@ -1,4 +1,11 @@
-language: java
+language: android
+
+android:
+  components:
+    - build-tools-29.0.3
+    - android-30
+  licenses:
+    - 'android-sdk-license-.+'
 
 sudo: required
 
@@ -7,6 +14,7 @@ dist: trusty
 addons:
   apt:
     packages:
+    - ant
     - gcc-multilib
     - g++-multilib
     - yasm
@@ -20,4 +28,18 @@ addons:
     - binutils-mingw-w64-i686
     - binutils-mingw-w64-x86-64
 
-before_install: ant -f gdx-video-desktop/jni/build.xml
+before_install:
+  - yes | sdkmanager "platforms;android-30"
+
+script:
+  - ant -f gdx-video-desktop/jni/build.xml
+  - ./gradlew check
+
+before_cache:
+  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+cache:
+  directories:
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
+    - $HOME/.android/build-cache

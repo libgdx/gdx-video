@@ -1,11 +1,48 @@
-apply plugin: "java"
+apply plugin: 'com.android.library'
 
-sourceSets {
-    main {
-        java {
-            srcDirs = ["src/"]
+buildscript {
+    repositories {
+        mavenCentral()
+        mavenLocal()
+        google()
+        jcenter()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:3.4.3"
+    }
+}
+
+repositories {
+    google()
+    jcenter()
+}
+
+android {
+    compileSdkVersion 30
+    buildToolsVersion "29.0.3"
+
+    defaultConfig {
+        minSdkVersion 16
+    }
+
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            java {
+                srcDirs = ["src/"]
+            }
         }
     }
+}
+
+dependencies {
+    api project(":gdx-video-core")
+    api "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
+    api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi"
+    api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
+    api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-arm64-v8a"
+    api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86"
+    api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86_64"
 }
 
 eclipse.project {

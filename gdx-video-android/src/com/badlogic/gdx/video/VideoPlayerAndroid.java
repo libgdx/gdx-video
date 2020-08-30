@@ -260,10 +260,9 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
 		  // Draw texture
 		  GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
-		  shader.begin();
+		  shader.bind();
 		  shader.setUniformMatrix(UNIFORM_CAMERATRANSFORM, cam.combined);
 		  mesh.render(shader, primitiveType);
-		  shader.end();
 
 		  return !done;
 	 }

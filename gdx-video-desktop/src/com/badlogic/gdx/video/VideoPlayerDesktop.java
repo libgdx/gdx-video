@@ -242,7 +242,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
 				}
 
 		  }
-		  
+
 		  if (texture != null) {
 			  renderTexture();
 		  }
@@ -251,11 +251,10 @@ public class VideoPlayerDesktop implements VideoPlayer {
 
 	 private void renderTexture () {
 		  texture.bind();
-		  shader.begin();
+		  shader.bind();
 		  shader.setUniformMatrix("u_worldView", cam.combined);
 		  shader.setUniformi("u_texture", 0);
 		  mesh.render(shader, primitiveType);
-		  shader.end();
 	 }
 
 	 /**
