@@ -20,107 +20,86 @@ import java.nio.ByteBuffer;
 
 import com.badlogic.gdx.utils.Disposable;
 
-/**
- * This class is a java wrapper used on the background, which communicates through jni to the actual video decoder.
+/** This class is a java wrapper used on the background, which communicates through jni to the actual video decoder.
  *
- * @author Rob Bogie <rob.bogie@codepoke.net>
- */
+ * @author Rob Bogie <rob.bogie@codepoke.net> */
 public class VideoDecoder implements Disposable {
-	 /**
-	  * This value should not be used or altered in any way. It is used to store the pointer to the native object, for
-	  * which this object is a wrapper.
-	  */
-	 private long nativePointer;
+	/** This value should not be used or altered in any way. It is used to store the pointer to the native object, for which this
+	 * object is a wrapper. */
+	private long nativePointer;
 
-	 public static class VideoDecoderBuffers {
-		  private ByteBuffer videoBuffer;
-		  private ByteBuffer audioBuffer;
-		  private int videoWidth;
-		  private int videoHeight;
-		  private int audioChannels;
-		  private int audioSampleRate;
+	public static class VideoDecoderBuffers {
+		private ByteBuffer videoBuffer;
+		private ByteBuffer audioBuffer;
+		private int videoWidth;
+		private int videoHeight;
+		private int audioChannels;
+		private int audioSampleRate;
 
-		  // If constructor parameters are changed, please also update the native code to call the new constructor!
-		  private VideoDecoderBuffers (ByteBuffer videoBuffer, ByteBuffer audioBuffer, int videoWidth, int videoHeight,
-			  int audioChannels, int audioSampleRate) {
-				this.videoBuffer = videoBuffer;
-				this.audioBuffer = audioBuffer;
-				this.videoWidth = videoWidth;
-				this.videoHeight = videoHeight;
-				this.audioChannels = audioChannels;
-				this.audioSampleRate = audioSampleRate;
-		  }
+		// If constructor parameters are changed, please also update the native code to call the new constructor!
+		private VideoDecoderBuffers (ByteBuffer videoBuffer, ByteBuffer audioBuffer, int videoWidth, int videoHeight,
+			int audioChannels, int audioSampleRate) {
+			this.videoBuffer = videoBuffer;
+			this.audioBuffer = audioBuffer;
+			this.videoWidth = videoWidth;
+			this.videoHeight = videoHeight;
+			this.audioChannels = audioChannels;
+			this.audioSampleRate = audioSampleRate;
+		}
 
-		  /**
-			* @return The audiobuffer
-			*/
-		  public ByteBuffer getAudioBuffer () {
-				return audioBuffer;
-		  }
+		/** @return The audiobuffer */
+		public ByteBuffer getAudioBuffer () {
+			return audioBuffer;
+		}
 
-		  /**
-			* @return The videobuffer
-			*/
-		  public ByteBuffer getVideoBuffer () {
-				return videoBuffer;
-		  }
+		/** @return The videobuffer */
+		public ByteBuffer getVideoBuffer () {
+			return videoBuffer;
+		}
 
-		  /**
-			* @return The amount of audio channels
-			*/
-		  public int getAudioChannels () {
-				return audioChannels;
-		  }
+		/** @return The amount of audio channels */
+		public int getAudioChannels () {
+			return audioChannels;
+		}
 
-		  /**
-			* @return The audio's samplerate
-			*/
-		  public int getAudioSampleRate () {
-				return audioSampleRate;
-		  }
+		/** @return The audio's samplerate */
+		public int getAudioSampleRate () {
+			return audioSampleRate;
+		}
 
-		  /**
-			* @return The height of the video
-			*/
-		  public int getVideoHeight () {
-				return videoHeight;
-		  }
+		/** @return The height of the video */
+		public int getVideoHeight () {
+			return videoHeight;
+		}
 
-		  /**
-			* @return The width of the video
-			*/
-		  public int getVideoWidth () {
-				return videoWidth;
-		  }
-	 }
+		/** @return The width of the video */
+		public int getVideoWidth () {
+			return videoWidth;
+		}
+	}
 
-	 /**
-	  * Constructs a VideoDecoder
-	  */
-	 public VideoDecoder () {
-		  if (!FfMpeg.isLoaded())
-				throw new IllegalStateException("The native libraries are not yet loaded!");
-		  nativePointer = init();
-	 }
+	/** Constructs a VideoDecoder */
+	public VideoDecoder () {
+		if (!FfMpeg.isLoaded()) throw new IllegalStateException("The native libraries are not yet loaded!");
+		nativePointer = init();
+	}
 
-	 /**
-	  * This will close the VideoDecoder, and with it cleanup everything.
-	  */
-	 public void close () {
-		  disposeNative();
-		  nativePointer = 0;
-	 }
+	/** This will close the VideoDecoder, and with it cleanup everything. */
+	public void close () {
+		disposeNative();
+		nativePointer = 0;
+	}
 
-	 /**
-	  * Calls close
-	  */
-	 @Override public void dispose () {
-		  close();
-	 }
+	/** Calls close */
+	@Override
+	public void dispose () {
+		close();
+	}
 
 	/*
 	 * Native functions
-	 * @formatter:off
+	 *
+	 * @off
 	 */
 
 	/*JNI
@@ -175,12 +154,10 @@ public class VideoDecoder implements Disposable {
 
 	 */
 
-	 /**
-	  * Creates an instance on the native side.
-	  *
-	  * @return A raw pointer to the native instance
-	  */
-	 private native long init ();/*
+	/** Creates an instance on the native side.
+	 *
+	 * @return A raw pointer to the native instance */
+	private native long init ();/*
 
 		if(jvm == NULL) {
             env->GetJavaVM(&jvm);
@@ -191,18 +168,17 @@ public class VideoDecoder implements Disposable {
 
 		VideoDecoder* pointer = new VideoDecoder();
 		return (jlong)pointer;
-	 */
+											 */
 
-	 /**
-	  * This will load a file for playback
-	  *
-	  * @param decodingObject The instance on which the next parameter should be used.
-	  * @param methodName     The name of the function that should be called on the provided object. (The
-	  *                       function should have return type int, and should accept a single ByteBuffer).
-	  * @return A VideoDecoderBuffers object which contains all the information that may be needed about the video.
-	  * @throws IllegalArgumentException When the filename is invalid.
-	  * @throws Exception                Runtime exceptions in c++, which can have different causes.
-	  */
+	/** This will load a file for playback
+	 *
+	 * @param decodingObject The instance on which the next parameter should be used.
+	 * @param methodName The name of the function that should be called on the provided object. (The function should have return
+	 *           type int, and should accept a single ByteBuffer).
+	 * @return A VideoDecoderBuffers object which contains all the information that may be needed about the video.
+	 * @throws IllegalArgumentException When the filename is invalid.
+	 * @throws Exception                Runtime exceptions in c++, which can have different causes.
+	 */
 	 public native VideoDecoderBuffers loadStream (Object decodingObject, String methodName)
 		 throws IllegalArgumentException, Exception;/*
 		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
@@ -252,57 +228,48 @@ public class VideoDecoder implements Disposable {
 			env->ThrowNew(clazz, e.what());
 		}
 		return 0;
-	 */
+						 */
 
-	 /**
-	  * This will return a ByteBuffer pointing to the next videoframe. This bytebuffer contains a single frame in RGB888.
-	  *
-	  * @return A ByteBuffer pointing to the next frame.
-	  */
-	 public native ByteBuffer nextVideoFrame ();/*
+	/** This will return a ByteBuffer pointing to the next videoframe. This bytebuffer contains a single frame in RGB888.
+	 *
+	 * @return A ByteBuffer pointing to the next frame. */
+	public native ByteBuffer nextVideoFrame ();/*
 		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
 		u_int8_t* buffer = pointer->nextVideoFrame();
 
 		return (buffer == NULL) ? NULL : env->NewDirectByteBuffer(buffer, pointer->getVideoFrameSize());
-	 */
+																 */
 
-	 /**
-	  * This will fill the ByteBuffer for the audio (The one gotten from VideoDecoderBuffers object retrieved from loadFile)
-	  * with new audio.
-	  */
-	 public native void updateAudioBuffer ();/*
+	/** This will fill the ByteBuffer for the audio (The one gotten from VideoDecoderBuffers object retrieved from loadFile) with
+	 * new audio. */
+	public native void updateAudioBuffer ();/*
 		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
 		pointer->updateAudioBuffer();
-	 */
+															 */
 
-	 /**
-	  * This gets the timestamp of the current displaying frame (The one that you got last by calling nextVideoFrame). The
-	  * timestamp is in seconds, and can be total nonsense if you never called nextVideoFrame. It is being corrected when the audio couldn't keep up.
-	  *
-	  * @return The timestamp in seconds.
-	  */
-	 public native double getCurrentFrameTimestamp ();/*
+	/** This gets the timestamp of the current displaying frame (The one that you got last by calling nextVideoFrame). The
+	 * timestamp is in seconds, and can be total nonsense if you never called nextVideoFrame. It is being corrected when the audio
+	 * couldn't keep up.
+	 *
+	 * @return The timestamp in seconds. */
+	public native double getCurrentFrameTimestamp ();/*
 		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
 		return pointer->getCurrentFrameTimestamp();
-	 */
+																		 */
 
-	 /**
-	  * Disposes the native object.
-	  */
-	 private native void disposeNative ();/*
+	/** Disposes the native object. */
+	private native void disposeNative ();/*
 		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
 		FfMpegCustomFileReaderData* data = (FfMpegCustomFileReaderData*)pointer->getCustomFileBufferFuncData();
         if(data != NULL) {
             delete data;
         }
 		delete pointer;
-	 */
+														 */
 
-	 /**
-	  * @return Whether the buffer is completely filled.
-	  */
-	 public native boolean isBuffered ();/*
+	/** @return Whether the buffer is completely filled. */
+	public native boolean isBuffered ();/*
 		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
 		return pointer->isBuffered();
-	 */
+													 */
 }

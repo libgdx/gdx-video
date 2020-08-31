@@ -1,0 +1,39 @@
+apply plugin: 'application'
+
+sourceSets.main.resources.srcDirs += [ project(':test').file('assets').path ]
+mainClassName = 'com.badlogic.gdx.video.test.lwjgl3.Lwjgl3Launcher'
+eclipse.project.name = appName + '-lwjgl3'
+sourceCompatibility = 8.0
+
+dependencies {
+	implementation project(':test:core')
+	implementation project(':gdx-video-desktop')
+	implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+	implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+}
+
+import org.gradle.internal.os.OperatingSystem
+
+run {
+	workingDir = project(':test').file('assets').path
+	setIgnoreExitValue(true)
+
+	if (OperatingSystem.current() == OperatingSystem.MAC_OS) {
+		// Required to run LWJGL3 Java apps on MacOS
+		jvmArgs += "-XstartOnFirstThread"
+	}
+}
+jar {
+	archiveFileName = "${appName}-${archiveVersion.get()}.jar"
+	//// These can excluded because they add to the jar size but libGDX 1.9.11 can't use them.
+	//// If your libGDX version is 1.9.10 or earlier, or is 1.9.12-SNAPSHOT or later, you can leave
+	//// the following line commented; if you use 1.9.11 exactly, or if you use 1.9.12-SNAPSHOT but
+    //// don't need ARM Linux support, you can uncomment it safely.
+	//// It's always safe to keep that line commented out; it only affects JAR size.
+	//exclude('linux/arm32/**', 'linux/arm64/**')
+	dependsOn configurations.runtimeClasspath
+	from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+	manifest {
+		attributes 'Main-Class': project.mainClassName
+	}
+}

@@ -1,0 +1,111 @@
+apply plugin: 'com.android.application'
+
+android {
+	compileSdkVersion 30
+	sourceSets {
+		main {
+			manifest.srcFile 'AndroidManifest.xml'
+			java.srcDirs = ['src/main/java']
+			aidl.srcDirs = ['src/main/java']
+			renderscript.srcDirs = ['src/main/java']
+			res.srcDirs = ['res']
+			assets.srcDirs = ['../assets']
+			jniLibs.srcDirs = ['libs']
+		}
+	}
+	packagingOptions {
+		// Preventing from license violations (more or less):
+		pickFirst 'META-INF/LICENSE.txt'
+		pickFirst 'META-INF/LICENSE'
+		pickFirst 'META-INF/license.txt'
+		pickFirst 'META-INF/LGPL2.1'
+		pickFirst 'META-INF/NOTICE.txt'
+		pickFirst 'META-INF/NOTICE'
+		pickFirst 'META-INF/notice.txt'
+		// Excluding unnecessary meta-data:
+		exclude 'META-INF/robovm/ios/robovm.xml'
+		exclude 'META-INF/DEPENDENCIES.txt'
+		exclude 'META-INF/DEPENDENCIES'
+		exclude 'META-INF/dependencies.txt'
+	}
+	defaultConfig {
+		applicationId 'com.badlogic.gdx.video.test'
+		minSdkVersion 19
+		targetSdkVersion 30
+		versionCode 1
+		versionName "1.0"
+	}
+}
+
+repositories {
+	// needed for AAPT2, may be needed for other tools
+	google()
+}
+
+configurations { natives }
+
+dependencies {
+	implementation project(':test:core')
+	implementation project(':gdx-video-android')
+	implementation "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
+
+	natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi"
+	natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
+	natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-arm64-v8a"
+	natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86"
+	natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86_64"
+
+}
+
+// Called every time gradle gets executed, takes the native dependencies of
+// the natives configuration, and extracts them to the proper libs/ folders
+// so they get packed with the APK.
+task copyAndroidNatives() {
+	doFirst {
+		file("libs/armeabi/").mkdirs()
+		file("libs/armeabi-v7a/").mkdirs()
+		file("libs/arm64-v8a/").mkdirs()
+		file("libs/x86_64/").mkdirs()
+		file("libs/x86/").mkdirs()
+
+		configurations.getByName("natives").copy().files.each { jar ->
+    	    def outputDir = null
+    	    if(jar.name.endsWith("natives-arm64-v8a.jar")) outputDir = file("libs/arm64-v8a")
+    	    if(jar.name.endsWith("natives-armeabi-v7a.jar")) outputDir = file("libs/armeabi-v7a")
+    	    if(jar.name.endsWith("natives-armeabi.jar")) outputDir = file("libs/armeabi")
+    	    if(jar.name.endsWith("natives-x86_64.jar")) outputDir = file("libs/x86_64")
+    	    if(jar.name.endsWith("natives-x86.jar")) outputDir = file("libs/x86")
+    	    if(outputDir != null) {
+    	        copy {
+    	            from zipTree(jar)
+    	            into outputDir
+    	            include "*.so"
+    	        }
+    	    }
+    	}
+	}
+}
+
+preBuild.dependsOn(copyAndroidNatives)
+
+task run(type: Exec) {
+	def path
+	def localProperties = project.file("../local.properties")
+	if (localProperties.exists()) {
+		Properties properties = new Properties()
+		localProperties.withInputStream { instr ->
+			properties.load(instr)
+		}
+		def sdkDir = properties.getProperty('sdk.dir')
+		if (sdkDir) {
+			path = sdkDir
+		} else {
+			path = "$System.env.ANDROID_HOME"
+		}
+	} else {
+		path = "$System.env.ANDROID_HOME"
+	}
+
+	def adb = path + "/platform-tools/adb"
+	commandLine "$adb", 'shell', 'am', 'start', '-n', 'com.badlogic.gdx.video.test/com.badlogic.gdx.video.test.android.AndroidLauncher'
+}

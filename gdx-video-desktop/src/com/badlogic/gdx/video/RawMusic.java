@@ -22,44 +22,44 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.lwjgl.audio.OpenALLwjglAudio;
 import com.badlogic.gdx.backends.lwjgl.audio.OpenALMusic;
 
-/**
- * The RawMusic class extends OpenAlMusic, and retrieves it's audio from a VideoDecoder instance.
+/** The RawMusic class extends OpenAlMusic, and retrieves it's audio from a VideoDecoder instance.
  *
- * @author Rob Bogie <rob.bogie@codepoke.net>
- */
+ * @author Rob Bogie <rob.bogie@codepoke.net> */
 class RawMusic extends OpenALMusic {
-	 VideoDecoder decoder;
-	 ByteBuffer backBuffer;
+	VideoDecoder decoder;
+	ByteBuffer backBuffer;
 
-	 public RawMusic (VideoDecoder decoder, ByteBuffer buffer, int channels, int sampleRate) {
-		  super((OpenALLwjglAudio) Gdx.audio, null);
-		  this.decoder = decoder;
-		  backBuffer = buffer;
-		  setup(channels, sampleRate);
-	 }
+	public RawMusic (VideoDecoder decoder, ByteBuffer buffer, int channels, int sampleRate) {
+		super((OpenALLwjglAudio)Gdx.audio, null);
+		this.decoder = decoder;
+		backBuffer = buffer;
+		setup(channels, sampleRate);
+	}
 
-	 @Override public int read (byte[] buffer) {
-		  int sizeNeeded = buffer.length;
-		  int currentIndex = 0;
+	@Override
+	public int read (byte[] buffer) {
+		int sizeNeeded = buffer.length;
+		int currentIndex = 0;
 
-		  while (sizeNeeded > 0) {
-				if (backBuffer.remaining() > 0) {
-					 int numBytes = Math.min(backBuffer.remaining(), sizeNeeded);
-					 backBuffer.get(buffer, currentIndex, numBytes);
-					 currentIndex += numBytes;
-					 sizeNeeded -= numBytes;
-				} else {
-					 // We need to fill the buffer;
-					 backBuffer.rewind();
-					 decoder.updateAudioBuffer();
-				}
-		  }
+		while (sizeNeeded > 0) {
+			if (backBuffer.remaining() > 0) {
+				int numBytes = Math.min(backBuffer.remaining(), sizeNeeded);
+				backBuffer.get(buffer, currentIndex, numBytes);
+				currentIndex += numBytes;
+				sizeNeeded -= numBytes;
+			} else {
+				// We need to fill the buffer;
+				backBuffer.rewind();
+				decoder.updateAudioBuffer();
+			}
+		}
 
-		  return buffer.length;
-	 }
+		return buffer.length;
+	}
 
-	 @Override public void reset () {
+	@Override
+	public void reset () {
 
-	 }
+	}
 
 }

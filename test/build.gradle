@@ -1,0 +1,26 @@
+configure(subprojects - project(':test:android')) {
+	apply plugin: 'java-library'
+	sourceCompatibility = 8.0
+	compileJava {
+		options.incremental = true
+	}
+}
+
+subprojects {
+	version = '0.0.1-SNAPSHOT'
+	ext.appName = 'test'
+	repositories {
+		mavenLocal()
+		mavenCentral()
+		maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
+		maven { url 'https://jitpack.io' }
+		jcenter()
+	}
+}
+
+// Clearing Eclipse project data in root folder:
+tasks.eclipse.doLast {
+	delete '.project'
+	delete '.classpath'
+	delete '.settings/'
+}
