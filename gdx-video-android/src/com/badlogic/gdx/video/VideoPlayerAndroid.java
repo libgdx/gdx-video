@@ -220,7 +220,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		try {
 			if (file.type() == FileType.Classpath || (file.type() == FileType.Internal && !file.file().exists())) {
 				AssetManager assets = ((AndroidApplication)Gdx.app).getAssets();
-				AssetFileDescriptor descriptor = assets.openFd(file.name());
+				AssetFileDescriptor descriptor = assets.openFd(file.path());
 				player.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(), descriptor.getLength());
 			} else {
 				player.setDataSource(file.file().getAbsolutePath());
