@@ -16,8 +16,6 @@
 
 package com.badlogic.gdx.video;
 
-import java.lang.reflect.InvocationTargetException;
-
 import com.badlogic.gdx.Application.ApplicationType;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
@@ -41,10 +39,8 @@ public class VideoPlayerCreator {
 		initialize();
 		if (videoPlayerClass == null) return new VideoPlayerStub();
 		try {
-			return videoPlayerClass.newInstance();
-		} catch (InstantiationException e) {
-			e.printStackTrace();
-		} catch (IllegalAccessException e) {
+			return ClassReflection.newInstance(videoPlayerClass);
+		} catch (ReflectionException e) {
 			e.printStackTrace();
 		}
 		return null;
@@ -61,18 +57,8 @@ public class VideoPlayerCreator {
 		if (videoPlayerClass == null) return new VideoPlayerStub();
 
 		try {
-			return videoPlayerClass.getConstructor(Viewport.class).newInstance(viewport);
-		} catch (InvocationTargetException e) {
-			e.printStackTrace();
-		} catch (InstantiationException e) {
-			e.printStackTrace();
-		} catch (IllegalAccessException e) {
-			e.printStackTrace();
-		} catch (NoSuchMethodException e) {
-			e.printStackTrace();
-		} catch (IllegalArgumentException e) {
-			e.printStackTrace();
-		} catch (SecurityException e) {
+			return (VideoPlayer)ClassReflection.getConstructor(videoPlayerClass, Viewport.class).newInstance(viewport);
+		} catch (ReflectionException e) {
 			e.printStackTrace();
 		}
 		return null;
@@ -89,18 +75,9 @@ public class VideoPlayerCreator {
 		if (videoPlayerClass == null) return new VideoPlayerStub();
 
 		try {
-			return videoPlayerClass.getConstructor(Camera.class, Mesh.class, Integer.TYPE).newInstance(cam, mesh, primitiveType);
-		} catch (InvocationTargetException e) {
-			e.printStackTrace();
-		} catch (InstantiationException e) {
-			e.printStackTrace();
-		} catch (IllegalAccessException e) {
-			e.printStackTrace();
-		} catch (NoSuchMethodException e) {
-			e.printStackTrace();
-		} catch (IllegalArgumentException e) {
-			e.printStackTrace();
-		} catch (SecurityException e) {
+			return (VideoPlayer)ClassReflection.getConstructor(Camera.class, Mesh.class, Integer.TYPE).newInstance(cam, mesh,
+				primitiveType);
+		} catch (ReflectionException e) {
 			e.printStackTrace();
 		}
 		return null;
