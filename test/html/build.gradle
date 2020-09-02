@@ -27,7 +27,7 @@ gwt {
 
 dependencies {
 	implementation project(':test:core')
-	// TODO implementation project(':gdx-video-html')
+	implementation project(':gdx-video-gwt')
 	implementation "com.badlogicgames.gdx:gdx:$gdxVersion:sources"
 	implementation "com.badlogicgames.gdx:gdx-backend-gwt:$gdxVersion"
 	implementation "com.badlogicgames.gdx:gdx-backend-gwt:$gdxVersion:sources"
@@ -91,6 +91,8 @@ task dist(dependsOn: [clean, compileGwt]) {
 
 task addSource {
 	doLast {
+		sourceSets.main.compileClasspath += files(project(':gdx-video-core').sourceSets.main.allJava.srcDirs)
+		sourceSets.main.compileClasspath += files(project(':gdx-video-gwt').sourceSets.main.allJava.srcDirs)
 		sourceSets.main.compileClasspath += files(project(':test:core').sourceSets.main.allJava.srcDirs)
 
 	}

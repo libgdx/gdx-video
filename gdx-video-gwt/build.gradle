@@ -1,0 +1,19 @@
+apply plugin: "java"
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ["src/"]
+        }
+        resources {
+            srcDirs = ["res/"]
+        }
+    }
+}
+
+dependencies {
+    implementation project(":gdx-video-core")
+    implementation "com.badlogicgames.gdx:gdx:$gdxVersion:sources"
+    implementation "com.badlogicgames.gdx:gdx-backend-gwt:$gdxVersion"
+    implementation "com.badlogicgames.gdx:gdx-backend-gwt:$gdxVersion:sources"
+}

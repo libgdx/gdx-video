@@ -3,6 +3,7 @@
 <module rename-to="html">
 	<source path="" />
 	<inherits name="com.badlogic.gdx.backends.gdx_backends_gwt" />
+	<inherits name="com.badlogic.gdx.video.gdx_video_gwt" />
 	<inherits name="com.badlogic.gdx.video.test.GdxVideoTest" />
 	<entry-point class="com.badlogic.gdx.video.test.gwt.GwtLauncher" />
 	<set-configuration-property name="gdx.assetpath" value="../assets" />

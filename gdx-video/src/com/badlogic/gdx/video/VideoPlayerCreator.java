@@ -98,6 +98,8 @@ public class VideoPlayerCreator {
 			}
 		} else if (type == ApplicationType.Desktop) {
 			className = "com.badlogic.gdx.video.VideoPlayerDesktop";
+		} else if (type == ApplicationType.WebGL) {
+			className = "com.badlogic.gdx.video.VideoPlayerGwt";
 		} else {
 			Gdx.app.log("Gdx-Video", "Platform is not supported by the Gdx Video Extension");
 		}
