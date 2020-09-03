@@ -1,0 +1,4 @@
+[submodule "gdx-video-desktop/FFmpeg"]
+	path = gdx-video-desktop/FFmpeg
+	url = https://github.com/FFmpeg/FFmpeg.git
+	branch = release/4.3

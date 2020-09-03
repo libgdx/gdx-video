@@ -20,6 +20,181 @@ dependencies {
     implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
 }
 
+apply plugin: "com.badlogicgames.gdx.gdx-jnigen"
+
+task cleanFFmpeg(type: Delete) {
+  delete 'FFmpeg/build-windows32', 'FFmpeg/build-windows64', 'FFmpeg/build-linux32', 'FFmpeg/build-linux64', 'FFmpeg/build-linuxarm32', 'FFmpeg/build-linuxarm64', 'FFmpeg/build-macos64'
+  followSymlinks = true
+}
+clean.dependsOn cleanFFmpeg
+
+task patchFFmpeg() {
+    doFirst {
+        ant.patch(patchfile: "jni/ffmpeg.patch", originalFile: "FFmpeg/libavutil/mem.h")
+    }
+}
+
+task buildFFmpegWindows32() {
+	dependsOn patchFFmpeg
+    doFirst {
+        mkdir 'FFmpeg/build-windows32'
+        project.exec {
+            workingDir 'FFmpeg/build-windows32'
+            commandLine '../configure', '--enable-pic', '--enable-cross-compile', '--disable-symver', '--disable-doc', '--enable-memalign-hack', '--arch=x86', '--target-os=mingw32', '--cross-prefix=i686-w64-mingw32-', '--pkg-config=pkg-config', '--disable-shared', '--enable-static', '--disable-everything', '--enable-filter=deshake', '--enable-protocol=file', '--enable-filter=aresample', '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-decoder=vorbis', '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora'
+        }
+        project.exec {
+            workingDir 'FFmpeg/build-windows32'
+            commandLine 'make', '-j'
+        }
+    }
+    outputs.upToDateWhen { file('FFmpeg/build-windows32/libavformat/libavformat.a').exists() }
+}
+task buildFFmpegWindows64() {
+	dependsOn patchFFmpeg
+    doFirst {
+        mkdir 'FFmpeg/build-windows64'
+        project.exec {
+            workingDir 'FFmpeg/build-windows64'
+            commandLine '../configure', '--enable-pic', '--enable-cross-compile', '--disable-symver', '--disable-doc', '--enable-memalign-hack', '--arch=x86_64', '--target-os=mingw32', '--cross-prefix=x86_64-w64-mingw32-', '--pkg-config=pkg-config', '--disable-shared', '--enable-static', '--disable-everything', '--enable-filter=deshake', '--enable-protocol=file', '--enable-filter=aresample', '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-decoder=vorbis', '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora'
+        }
+        project.exec {
+            workingDir 'FFmpeg/build-windows64'
+            commandLine 'make', '-j'
+        }
+    }
+    outputs.upToDateWhen { file('FFmpeg/build-windows64/libavformat/libavformat.a').exists() }
+}
+task buildFFmpegLinux32() {
+	dependsOn patchFFmpeg
+    doFirst {
+        mkdir 'FFmpeg/build-linux32'
+        project.exec {
+            workingDir 'FFmpeg/build-linux32'
+            commandLine '../configure', '--enable-pic', '--enable-cross-compile', '--disable-symver', '--disable-doc', '--extra-cflags="-m32"', '--extra-cxxflags="-m32"', '--extra-ldflags="-m32"', '--arch=i686', '--target-os=linux', '--enable-static', '--disable-shared', '--disable-everything', '--enable-protocol=file', '--enable-filter=aresample', '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-decoder=vorbis', '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-filter=deshake'
+        }
+        project.exec {
+            workingDir 'FFmpeg/build-linux32'
+            commandLine 'make', '-j'
+        }
+    }
+    outputs.upToDateWhen { file('FFmpeg/build-linux32/libavformat/libavformat.a').exists() }
+}
+task buildFFmpegLinux64() {
+	dependsOn patchFFmpeg
+    doFirst {
+        mkdir 'FFmpeg/build-linux64'
+        project.exec {
+            workingDir 'FFmpeg/build-linux64'
+            commandLine '../configure', '--enable-pic', '--enable-cross-compile', '--disable-symver', '--disable-doc', '--arch=x86_64', '--target-os=linux', '--enable-static', '--disable-shared', '--disable-everything', '--enable-protocol=file', '--enable-filter=aresample', '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-decoder=vorbis', '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-filter=deshake'
+        }
+        project.exec {
+            workingDir 'FFmpeg/build-linux64'
+            commandLine 'make', '-j'
+        }
+    }
+    outputs.upToDateWhen { file('FFmpeg/build-linux64/libavformat/libavformat.a').exists() }
+}
+task buildFFmpegLinuxARM32() {
+	dependsOn patchFFmpeg
+    doFirst {
+        mkdir 'FFmpeg/build-linuxarm32'
+        project.exec {
+            workingDir 'FFmpeg/build-linuxarm32'
+            commandLine '../configure', '--enable-pic', '--enable-cross-compile', '--disable-symver', '--disable-doc', '--arch=arm', '--target-os=linux', '--cross-prefix=arm-linux-gnueabihf-', '--enable-static', '--disable-shared', '--disable-everything', '--enable-protocol=file', '--enable-filter=aresample', '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-decoder=vorbis', '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-filter=deshake'
+        }
+        project.exec {
+            workingDir 'FFmpeg/build-linuxarm32'
+            commandLine 'make', '-j'
+        }
+    }
+    outputs.upToDateWhen { file('FFmpeg/build-linuxarm32/libavformat/libavformat.a').exists() }
+}
+task buildFFmpegLinuxARM64() {
+	dependsOn patchFFmpeg
+    doFirst {
+        mkdir 'FFmpeg/build-linuxarm64'
+        project.exec {
+            workingDir 'FFmpeg/build-linuxarm64'
+            commandLine '../configure', '--enable-pic', '--enable-cross-compile', '--disable-symver', '--disable-doc', '--arch=aarch64', '--target-os=linux', '--cross-prefix=aarch64-linux-gnu-', '--enable-static', '--disable-shared', '--disable-everything', '--enable-protocol=file', '--enable-filter=aresample', '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-decoder=vorbis', '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-filter=deshake'
+        }
+        project.exec {
+            workingDir 'FFmpeg/build-linuxarm64'
+            commandLine 'make', '-j'
+        }
+    }
+    outputs.upToDateWhen { file('FFmpeg/build-linuxarm64/libavformat/libavformat.a').exists() }
+}
+task buildFFmpegMacos64() {
+	dependsOn patchFFmpeg
+    doFirst {
+        mkdir 'FFmpeg/build-macos64'
+        project.exec {
+            workingDir 'FFmpeg/build-macos64'
+            commandLine '../configure', '--enable-pic', '--disable-symver', '--disable-doc', '--arch=x86_64', '--pkg_config="pkg-config --static"', '--enable-static', '--disable-shared', '--disable-everything', '--enable-protocol=file', '--enable-filter=aresample', '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-decoder=vorbis', '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-filter=deshake'
+        }
+        project.exec {
+            workingDir 'FFmpeg/build-macos64'
+            commandLine 'make', '-j'
+        }
+    }
+    outputs.upToDateWhen { file('FFmpeg/build-linux64/libavformat/libavformat.a').exists() }
+}
+
+task buildFFmpeg() {
+	dependsOn buildFFmpegWindows32, buildFFmpegWindows64, buildFFmpegLinux32, buildFFmpegLinux64, buildFFmpegLinuxARM32, buildFFmpegLinuxARM64
+}
+
+ext.genLibs = { build -> 
+	String libs = "";
+	libs += " -L" + file("FFmpeg/build-"+build+"/libavcodec").absolutePath
+	libs += " -L" + file("FFmpeg/build-"+build+"/libavformat").absolutePath
+	libs += " -L" + file("FFmpeg/build-"+build+"/libavutil").absolutePath
+	libs += " -L" + file("FFmpeg/build-"+build+"/libswscale").absolutePath
+	libs += " -L" + file("FFmpeg/build-"+build+"/libswresample").absolutePath
+    return libs
+}
+
+jnigen {
+    sharedLibName = "gdx-video-desktop"
+    all {
+        headerDirs = ["../FFmpeg"]
+        cFlags += " -fvisibility=hidden "
+        cppFlags += " -fvisibility=hidden "
+        //Using `-lavcodec -lavformat` order on linux drops filesize by half but mingw wont compile??? 
+        libraries += " -lavformat -lavcodec -lavutil -lswscale -lswresample -lpthread "
+    }
+    add(Windows, x32) {
+        headerDirs += "../FFmpeg/build-windows32/"
+        cppFlags += " -DWIN32 "
+        libraries += genLibs("windows32")
+    }
+    add(Windows, x64) {
+        headerDirs += "../FFmpeg/build-windows64/"
+        cppFlags += " -DWIN32 "
+        libraries += genLibs("windows64")
+    }
+    add(Linux, x32) {
+        headerDirs += "../FFmpeg/build-linux32/"
+        libraries += genLibs("linux32")
+    }
+    add(Linux, x64) {
+        headerDirs += "../FFmpeg/build-linux64/"
+        libraries += genLibs("linux64")
+    }
+    add(Linux, x32, ARM) {
+        headerDirs += "../FFmpeg/build-linuxarm32/"
+        libraries += genLibs("linuxarm32")
+    }
+    add(Linux, x64, ARM) {
+        headerDirs += "../FFmpeg/build-linuxarm64/"
+        libraries += genLibs("linuxarm64")
+    }
+    add(MacOsX, x64) {
+        headerDirs += "../FFmpeg/build-macos64/"
+        libraries += genLibs("macos64") + " -liconv -lbz2 -lz "
+    }
+}
+
 eclipse.project {
     name = projectGroup + "-gdx-video-desktop"
 }

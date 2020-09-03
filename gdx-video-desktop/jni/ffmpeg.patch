@@ -1,0 +1,34 @@
+diff --git a/libavutil/mem.h b/libavutil/mem.h
+index 801c53ff51..76168413c9 100644
+--- a/libavutil/mem.h
++++ b/libavutil/mem.h
+@@ -40,23 +40,23 @@
+ 
+ 
+ #if defined(__INTEL_COMPILER) && __INTEL_COMPILER < 1110 || defined(__SUNPRO_C)
+-    #define DECLARE_ALIGNED(n,t,v)      t __attribute__ ((aligned (n))) v
++    #define DECLARE_ALIGNED(n,t,v)      t __attribute__ ((aligned (n))) __attribute__((visibility("hidden"))) v
+     #define DECLARE_ASM_CONST(n,t,v)    const t __attribute__ ((aligned (n))) v
+ #elif defined(__TI_COMPILER_VERSION__)
+-    #define DECLARE_ALIGNED(n,t,v)                      \
++    #define DECLARE_ALIGNED(n,t,v) __attribute__((visibility("hidden")))                      \
+         AV_PRAGMA(DATA_ALIGN(v,n))                      \
+         t __attribute__((aligned(n))) v
+     #define DECLARE_ASM_CONST(n,t,v)                    \
+         AV_PRAGMA(DATA_ALIGN(v,n))                      \
+         static const t __attribute__((aligned(n))) v
+ #elif defined(__GNUC__)
+-    #define DECLARE_ALIGNED(n,t,v)      t __attribute__ ((aligned (n))) v
++    #define DECLARE_ALIGNED(n,t,v)      t __attribute__ ((aligned (n))) __attribute__((visibility("hidden"))) v
+     #define DECLARE_ASM_CONST(n,t,v)    static const t av_used __attribute__ ((aligned (n))) v
+ #elif defined(_MSC_VER)
+-    #define DECLARE_ALIGNED(n,t,v)      __declspec(align(n)) t v
+-    #define DECLARE_ASM_CONST(n,t,v)    __declspec(align(n)) static const t v
++    #define DECLARE_ALIGNED(n,t,v)      __declspec(align(n)) __attribute__((visibility("hidden"))) t v
++    #define DECLARE_ASM_CONST(n,t,v)    __declspec(align(n)) static const __attribute__((visibility("hidden"))) t v
+ #else
+-    #define DECLARE_ALIGNED(n,t,v)      t v
++    #define DECLARE_ALIGNED(n,t,v)      t __attribute__((visibility("hidden"))) v
+     #define DECLARE_ASM_CONST(n,t,v)    static const t v
+ #endif
+ 
