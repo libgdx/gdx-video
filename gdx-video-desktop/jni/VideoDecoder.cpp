@@ -150,7 +150,7 @@ void VideoDecoder::loadFile(FillFileBufferFunc func, void* funcData, CleanupFunc
 }
 
 void VideoDecoder::loadContainer(VideoBufferInfo* bufferInfo) {
-    if (av_find_stream_info(formatContext) < 0) {
+    if (avformat_find_stream_info(formatContext, NULL) < 0) {
         logError("[VideoPlayer::loadFile] Could not find stream info!\n");
         throw std::runtime_error("Could not find stream info!");
     }

@@ -1,0 +1,94 @@
+name: Java CI with Gradle
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+    - name: Set up JDK 1.8
+      uses: actions/setup-java@v1
+      with:
+        java-version: 1.8
+
+    - run: brew install yasm
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    - name: Build with Gradle
+      run: ./gradlew buildFFmpegMacos64 jnigen jnigenBuild
+    - name: Upload macOS natives
+      uses: actions/upload-artifact@v2.1.4
+      with:
+        name: macos-natives
+        path: gdx-video-desktop/libs
+
+  linux:
+    needs: macos
+    runs-on: ubuntu-16.04
+    env:
+      ORG_GRADLE_PROJECT_GITHUB_USERNAME: ""
+      ORG_GRADLE_PROJECT_GITHUB_API_TOKEN: ""
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+    - name: Set up JDK 1.8
+      uses: actions/setup-java@v1
+      with:
+        java-version: 1.8
+
+    - run: sudo sed -i 's/deb http/deb [arch=amd64,i386] http/' /etc/apt/sources.list
+    - run: sudo grep "ubuntu.com/ubuntu" /etc/apt/sources.list | sudo tee /etc/apt/sources.list.d/ports.list
+    - run: sudo sed -i 's/amd64,i386/armhf,arm64/' /etc/apt/sources.list.d/ports.list
+    - run: sudo sed -i 's#http://.*/ubuntu#http://ports.ubuntu.com/ubuntu-ports#' /etc/apt/sources.list.d/ports.list
+    - name: Add extra platform architectures
+      run: sudo dpkg --add-architecture i386; sudo dpkg --add-architecture armhf; sudo dpkg --add-architecture arm64
+    - run: sudo apt-get update || true
+    - name: Install Windows compilers
+      run: sudo apt-get -yq install g++-mingw-w64-i686 g++-mingw-w64-x86-64
+    - name: Install Linux x86 compilers/libraries
+      run: sudo apt-get -yq install gcc-multilib g++-multilib linux-libc-dev:i386 libstdc++-5-dev:i386
+    - name: Install Linux arm32 compilers/libraries
+      run: sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf binutils-arm-linux-gnueabihf
+    - name: Install Linux arm64 compilers/libraries
+      run: sudo apt-get -yq install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu
+    - name: Install yasm for ffmpeg
+      run: sudo apt-get -yq install yasm
+    - name: Download macOS natives
+      uses: actions/download-artifact@v2.0.5
+      with:
+        name: macos-natives
+        path: gdx-video-desktop/libs
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    - name: Build with Gradle
+      run: ./gradlew buildFFmpeg jnigen jnigenBuild jnigenJarNativesDesktop --info
+    - name: Upload all output libs
+      uses: actions/upload-artifact@v2.1.4
+      with:
+        name: output-libs
+        path: '**/build/libs/'
