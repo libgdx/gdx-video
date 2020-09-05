@@ -1,5 +1,9 @@
 # GDX-Video
-A LibGDX cross platform video rendering extension
+
+![GitHub Workflow Status (master)](https://img.shields.io/github/workflow/status/libgdx/gdx-video/Java%20CI%20with%20Gradle/master?label=master)
+![GitHub Workflow Status (branch)](https://img.shields.io/github/workflow/status/libgdx/gdx-video/Java%20CI%20with%20Gradle/develop?label=develop)
+
+A libGDX cross platform video rendering extension
 
 ## Contents
 * [Getting Started] (#getting-started)
@@ -13,7 +17,7 @@ A LibGDX cross platform video rendering extension
 
 ## Getting Started
 
-Gdx-video is available in maven with Official builds and Snapshot builds.  You can find them at the following repositories:
+Gdx-video is available in maven with Official builds and Snapshot builds. You can find them at the following repositories:
 
 #### Repositories
 
