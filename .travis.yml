@@ -32,7 +32,6 @@ before_install:
   - yes | sdkmanager "platforms;android-30"
 
 script:
-  - ant -f gdx-video-desktop/jni/build.xml
   - ./gradlew check
 
 before_cache:
