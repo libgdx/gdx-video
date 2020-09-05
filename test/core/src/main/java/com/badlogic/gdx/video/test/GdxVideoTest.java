@@ -16,8 +16,10 @@
 
 package com.badlogic.gdx.video.test;
 
+import com.badlogic.gdx.Application;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.video.VideoPlayer;
 import com.badlogic.gdx.video.VideoPlayerCreator;
 
@@ -29,7 +31,20 @@ public class GdxVideoTest extends ApplicationAdapter {
 
 	@Override
 	public void create () {
+		Gdx.app.setLogLevel(Application.LOG_DEBUG);
 		videoPlayer = VideoPlayerCreator.createVideoPlayer();
+		videoPlayer.setOnCompletionListener(new VideoPlayer.CompletionListener() {
+			@Override
+			public void onCompletionListener (FileHandle file) {
+				Gdx.app.log("VideoTest", file.name() + " fully played.");
+			}
+		});
+		videoPlayer.setOnVideoSizeListener(new VideoPlayer.VideoSizeListener() {
+			@Override
+			public void onVideoSize (float width, float height) {
+				Gdx.app.log("VideoTest", "The video has a size of " + width + "x" + height + ".");
+			}
+		});
 	}
 
 	@Override

@@ -159,16 +159,16 @@ public class VideoPlayerDesktop implements VideoPlayer {
 
 		image = new Pixmap(buffers.getVideoWidth(), buffers.getVideoHeight(), Format.RGB888);
 
-		float x = -buffers.getVideoWidth() / 2;
-		float y = -buffers.getVideoHeight() / 2;
+		float x = -buffers.getVideoWidth() / 2f;
+		float y = -buffers.getVideoHeight() / 2f;
 		float width = buffers.getVideoWidth();
 		float height = buffers.getVideoHeight();
 
 		//@off
-		  if (!customMesh)
-				mesh.setVertices(
+		if (!customMesh)
+			mesh.setVertices(
 					new float[] {x, y, 0, 0, 1, x + width, y, 0, 1, 1, x + width, y + height, 0, 1, 0, x, y + height, 0, 0, 0});
-		  //@on
+	  	//@on
 
 		if (viewport != null) viewport.setWorldSize(width, height);
 		playing = true;
