@@ -62,11 +62,6 @@ subprojects {
             removeUnusedImports()
             eclipse().configFile new File(rootProject.projectDir.absolutePath, 'eclipse-formatter.xml')
         }
-
-        cpp {
-            target 'src/jni/**'
-            indentWithSpaces()
-        }
     }
 }
 

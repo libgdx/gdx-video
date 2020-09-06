@@ -42,7 +42,7 @@ public interface VideoPlayer extends Disposable {
 	boolean play (FileHandle file) throws FileNotFoundException;
 
 	/** This function needs to be called every frame, so that the player can update all the buffers. Normal usecase is to start
-	 * rendering after {@link isBuffered()} returns true.
+	 * rendering after {@link #isBuffered()} returns true.
 	 *
 	 * @return It returns true if a new frame is being displayed, false if none available (file is finished playing). */
 	boolean render ();
@@ -85,7 +85,7 @@ public interface VideoPlayer extends Disposable {
 	/** This will return the width of the currently playing video.
 	 * <p/>
 	 * This function cannot be called until the {@link VideoSizeListener} has been called for the currently playing video. If this
-	 * callback has not been set, a good alternative is to wait until the {@link isBuffered} function returns true, which
+	 * callback has not been set, a good alternative is to wait until the {@link #isBuffered} function returns true, which
 	 * guarantees the availability of the videoSize.
 	 *
 	 * @return the width of the video */
@@ -94,7 +94,7 @@ public interface VideoPlayer extends Disposable {
 	/** This will return the height of the currently playing video.
 	 * <p/>
 	 * This function cannot be called until the {@link VideoSizeListener} has been called for the currently playing video. If this
-	 * callback has not been set, a good alternative is to wait until the {@link isBuffered} function returns true, which
+	 * callback has not been set, a good alternative is to wait until the {@link #isBuffered} function returns true, which
 	 * guarantees the availability of the videoSize.
 	 *
 	 * @return the height of the video */

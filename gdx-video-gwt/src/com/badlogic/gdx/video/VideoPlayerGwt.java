@@ -103,7 +103,7 @@ public class VideoPlayerGwt implements VideoPlayer {
 	@Override
 	public boolean render () {
 		if (v != null) {
-			if ((v.getVideoHeight() != height || v.getVideoWidth() != width) && v.getVideoHeight() > 0 && v.getVideoWidth() > 0) {
+			if (v.getVideoHeight() != height || v.getVideoWidth() != width) {
 				height = v.getVideoHeight();
 				width = v.getVideoWidth();
 
@@ -150,7 +150,7 @@ public class VideoPlayerGwt implements VideoPlayer {
 
 	@Override
 	public void resume () {
-		if (v != null) v.play();
+		if (v != null && v.getCurrentTime() > 0 && v.getCurrentTime() < v.getDuration()) v.play();
 	}
 
 	@Override
