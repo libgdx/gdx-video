@@ -1,7 +1,6 @@
 # GDX-Video
 
 ![GitHub Workflow Status (master)](https://img.shields.io/github/workflow/status/libgdx/gdx-video/Java%20CI%20with%20Gradle/master?label=master)
-![GitHub Workflow Status (branch)](https://img.shields.io/github/workflow/status/libgdx/gdx-video/Java%20CI%20with%20Gradle/develop?label=develop)
 
 A libGDX cross platform video rendering extension
 

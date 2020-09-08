@@ -28,6 +28,9 @@ allprojects {
     apply plugin: 'eclipse'
     apply plugin: 'idea'
 
+    group = 'com.badlogicgames.gdx'
+    version = '1.3.2-SNAPSHOT'
+
     repositories {
         mavenLocal()
         mavenCentral()

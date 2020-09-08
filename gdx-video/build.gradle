@@ -8,6 +8,8 @@ sourceSets {
     }
 }
 
+archivesBaseName = 'gdx-video'
+
 dependencies {
     implementation "com.badlogicgames.gdx:gdx:$gdxVersion"
 }

@@ -2,9 +2,9 @@ name: Java CI with Gradle
 
 on:
   push:
-    branches: [ master, develop ]
+    branches: [ master ]
   pull_request:
-    branches: [ master, develop ]
+    branches: [ master ]
 
 jobs:
   macos:
@@ -85,8 +85,10 @@ jobs:
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-    - name: Build with Gradle
+    - name: Build natives with Gradle
       run: ./gradlew buildFFmpeg jnigen jnigenBuild jnigenJarNativesDesktop --info
+    - name: Build whole project with gradle
+      run: ./gradlew build
     - name: Upload all output libs
       uses: actions/upload-artifact@v2.1.4
       with:
