@@ -90,6 +90,7 @@ jobs:
     - name: Build whole project with gradle
       run: ./gradlew build
     - name: Upload all output libs
+      if: ${{ always() }}
       uses: actions/upload-artifact@v2.1.4
       with:
         name: output-libs
