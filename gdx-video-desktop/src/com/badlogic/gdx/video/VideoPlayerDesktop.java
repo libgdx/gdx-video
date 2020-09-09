@@ -212,15 +212,10 @@ public class VideoPlayerDesktop implements VideoPlayer {
 			if (!showAlreadyDecodedFrame) {
 				ByteBuffer videoData = decoder.nextVideoFrame();
 				if (videoData != null) {
-
-					ByteBuffer data = image.getPixels();
-					data.rewind();
-					data.put(videoData);
-					data.rewind();
-					if (texture != null) {
-						texture.dispose();
-					}
-					texture = new Texture(image);
+					if (texture == null) texture = new Texture(currentVideoWidth, currentVideoHeight, Format.RGB888);
+					texture.bind();
+					Gdx.gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, currentVideoWidth, currentVideoHeight, 0, GL20.GL_RGB,
+						GL20.GL_UNSIGNED_BYTE, videoData);
 				} else {
 					playing = false;
 					renderTexture();
