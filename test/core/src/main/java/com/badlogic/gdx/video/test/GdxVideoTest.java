@@ -57,6 +57,8 @@ public class GdxVideoTest extends ApplicationAdapter {
 			}
 		}
 
+		Gdx.gl.glClearColor(0, 0, 0, 0);
+		Gdx.gl.glClear(Gdx.gl.GL_COLOR_BUFFER_BIT);
 		videoPlayer.render();
 	}
 

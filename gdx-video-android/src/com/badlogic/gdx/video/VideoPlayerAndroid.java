@@ -170,8 +170,8 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		player.setOnPreparedListener(new OnPreparedListener() {
 			@Override
 			public void onPrepared (MediaPlayer mp) {
-				float x = -mp.getVideoWidth() / 2;
-				float y = -mp.getVideoHeight() / 2;
+				float x = -mp.getVideoWidth() / 2f;
+				float y = -mp.getVideoHeight() / 2f;
 				float width = mp.getVideoWidth();
 				float height = mp.getVideoHeight();
 
