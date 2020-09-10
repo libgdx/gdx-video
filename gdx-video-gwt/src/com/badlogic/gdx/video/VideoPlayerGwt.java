@@ -18,6 +18,7 @@ package com.badlogic.gdx.video;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.gwt.GwtApplication;
+import com.badlogic.gdx.backends.gwt.GwtGL20;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
@@ -120,9 +121,10 @@ public class VideoPlayerGwt implements VideoPlayer {
 				if (videoSizeListener != null) videoSizeListener.onVideoSize(width, height);
 			}
 			if (!v.isPaused() && isBuffered() && v.getVideoWidth() > 0 && v.getVideoHeight() > 0) {
-				if (frame != null) frame.dispose();
-				frame = new Texture(new Pixmap(v.getVideoElement()));
+				if (frame == null) frame = new Texture(width, height, Pixmap.Format.RGB888);
 				frame.bind();
+				((GwtGL20)Gdx.gl).gl.texImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, GL20.GL_RGB, GL20.GL_UNSIGNED_BYTE,
+					v.getVideoElement());
 				shader.bind();
 				shader.setUniformMatrix("u_worldView", cam.combined);
 				shader.setUniformi("u_texture", 0);
