@@ -13,7 +13,8 @@ jobs:
     - uses: actions/checkout@v2
       with:
         submodules: 'recursive'
-    - uses: actions/cache@v2
+    - name: Gradle cache
+      uses: actions/cache@v2
       with:
         path: |
           ~/.gradle/caches
@@ -21,14 +22,19 @@ jobs:
         key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
         restore-keys: |
           ${{ runner.os }}-gradle-
+    - name: Natives cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.ccache
+        key: ${{ runner.os }}-ccache-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-ccache
     - name: Set up JDK 1.8
       uses: actions/setup-java@v1
       with:
         java-version: 1.8
 
-    - run: brew install yasm
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+    - run: brew install yasm ccache
     - name: Build with Gradle
       run: ./gradlew buildFFmpegMacos64 jnigen jnigenBuild
     - name: Upload macOS natives
@@ -47,7 +53,8 @@ jobs:
     - uses: actions/checkout@v2
       with:
         submodules: 'recursive'
-    - uses: actions/cache@v2
+    - name: Gradle cache
+      uses: actions/cache@v2
       with:
         path: |
           ~/.gradle/caches
@@ -55,6 +62,13 @@ jobs:
         key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
         restore-keys: |
           ${{ runner.os }}-gradle-
+    - name: Natives cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.ccache
+        key: ${{ runner.os }}-ccache-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-ccache
     - name: Set up JDK 1.8
       uses: actions/setup-java@v1
       with:
@@ -70,7 +84,7 @@ jobs:
     - name: Install Windows compilers
       run: sudo apt-get -yq install g++-mingw-w64-i686 g++-mingw-w64-x86-64
     - name: Install Linux x86 compilers/libraries
-      run: sudo apt-get -yq install gcc-multilib g++-multilib linux-libc-dev:i386 libstdc++-5-dev:i386
+      run: sudo apt-get -yq install gcc-multilib g++-multilib linux-libc-dev:i386 libstdc++-5-dev:i386 ccache
     - name: Install Linux arm32 compilers/libraries
       run: sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf binutils-arm-linux-gnueabihf
     - name: Install Linux arm64 compilers/libraries
@@ -83,8 +97,6 @@ jobs:
         name: macos-natives
         path: gdx-video-desktop/libs
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
     - name: Build natives with Gradle
       run: ./gradlew buildFFmpeg jnigen jnigenBuild jnigenJarNativesDesktop --info
     - name: Create debug keystore for android
