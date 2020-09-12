@@ -87,6 +87,8 @@ jobs:
       run: chmod +x gradlew
     - name: Build natives with Gradle
       run: ./gradlew buildFFmpeg jnigen jnigenBuild jnigenJarNativesDesktop --info
+    - name: Create debug keystore for android
+      run: keytool -genkey -v -keystore $HOME/.android/debug.keystore -storetype PKCS12 -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -noprompt -dname "CN=GdxVideo, OU=libGDX, O=libGDX, L=Unknown, ST=Unknown, C=US"
     - name: Build whole project with gradle
       run: ./gradlew build
     - name: Upload all output libs
