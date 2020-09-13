@@ -51,7 +51,7 @@ public class GdxVideoTest extends ApplicationAdapter {
 	public void render () {
 		if (Gdx.input.justTouched()) {
 			try {
-				videoPlayer.play(Gdx.files.internal("libGDX - It's Good For You!.mp4"));
+				videoPlayer.play(Gdx.files.internal("libGDX - It's Good For You!.webm"));
 			} catch (FileNotFoundException e) {
 				System.out.println("Oh no!");
 			}
