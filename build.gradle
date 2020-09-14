@@ -67,7 +67,3 @@ subprojects {
         }
     }
 }
-
-tasks.eclipse.doLast {
-    delete ".project"
-}

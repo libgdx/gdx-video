@@ -196,5 +196,5 @@ jnigen {
 }
 
 eclipse.project {
-    name = projectGroup + "-gdx-video-desktop"
+    name = projectGroup + "-desktop"
 }

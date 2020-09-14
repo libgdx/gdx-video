@@ -110,3 +110,7 @@ task run(type: Exec) {
 	def adb = path + "/platform-tools/adb"
 	commandLine "$adb", 'shell', 'am', 'start', '-n', 'com.badlogic.gdx.video.test/com.badlogic.gdx.video.test.android.AndroidLauncher'
 }
+
+eclipse.project {
+    name = appName + "-android"
+}
