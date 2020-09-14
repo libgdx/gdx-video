@@ -24,8 +24,6 @@ import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
-import com.google.gwt.event.dom.client.EndedEvent;
-import com.google.gwt.event.dom.client.EndedHandler;
 import com.google.gwt.media.client.Video;
 
 import java.io.FileNotFoundException;
@@ -95,7 +93,7 @@ public class VideoPlayerGwt implements VideoPlayer {
 		if (!file.exists()) throw new FileNotFoundException();
 		currentFile = file;
 		if (v != null) {
-			v.setSrc(((GwtFileHandle) file).getAssetUrl());
+			v.setSrc(((GwtFileHandle)file).getAssetUrl());
 			v.play();
 		}
 		return true;
