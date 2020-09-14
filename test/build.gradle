@@ -8,7 +8,7 @@ configure(subprojects - project(':test:android')) {
 
 subprojects {
 	version = '0.0.1-SNAPSHOT'
-	ext.appName = 'test'
+	ext.appName = 'gdx-video-test'
 	repositories {
 		mavenLocal()
 		mavenCentral()
@@ -18,9 +18,6 @@ subprojects {
 	}
 }
 
-// Clearing Eclipse project data in root folder:
-tasks.eclipse.doLast {
-	delete '.project'
-	delete '.classpath'
-	delete '.settings/'
+eclipse.project {
+    name = 'gdx-video-test'
 }

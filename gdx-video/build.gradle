@@ -15,5 +15,5 @@ dependencies {
 }
 
 eclipse.project {
-    name = projectGroup + "-gdx-video-core"
+    name = projectGroup + "-core"
 }

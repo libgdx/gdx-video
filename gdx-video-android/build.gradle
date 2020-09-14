@@ -34,5 +34,5 @@ dependencies {
 }
 
 eclipse.project {
-    name = projectGroup + "-gdx-video-android"
+    name = projectGroup + "-android"
 }
