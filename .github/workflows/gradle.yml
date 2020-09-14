@@ -35,6 +35,8 @@ jobs:
         java-version: 1.8
 
     - run: brew install yasm ccache
+    - name: Setup ccache
+      run: export PATH="/usr/lib/ccache/bin/:$PATH"
     - name: Build with Gradle
       run: ./gradlew buildFFmpegMacos64 jnigen jnigenBuild
     - name: Upload macOS natives
@@ -91,6 +93,8 @@ jobs:
       run: sudo apt-get -yq install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu
     - name: Install yasm for ffmpeg
       run: sudo apt-get -yq install yasm
+    - name: Setup ccache
+      run: export PATH="/usr/lib/ccache/bin/:$PATH"
     - name: Download macOS natives
       uses: actions/download-artifact@v2.0.5
       with:
