@@ -17,7 +17,7 @@
 package com.badlogic.gdx.video;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.backends.gwt.GwtApplication;
+import com.badlogic.gdx.backends.gwt.GwtFileHandle;
 import com.badlogic.gdx.backends.gwt.GwtGL20;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.*;
@@ -95,7 +95,7 @@ public class VideoPlayerGwt implements VideoPlayer {
 		if (!file.exists()) throw new FileNotFoundException();
 		currentFile = file;
 		if (v != null) {
-			v.setSrc(((GwtApplication)Gdx.app).getPreloaderBaseURL() + file.path());
+			v.setSrc(((GwtFileHandle) file).getAssetUrl());
 			v.play();
 		}
 		return true;
