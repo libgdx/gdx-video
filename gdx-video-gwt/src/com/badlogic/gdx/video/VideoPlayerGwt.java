@@ -169,14 +169,20 @@ public class VideoPlayerGwt implements VideoPlayer {
 		videoSizeListener = listener;
 	}
 
+	//@off
+	private native void setEndedCaller(CompletionListener listener) /*-{
+		var video = this.@com.badlogic.gdx.video.VideoPlayerGwt::v;
+		var videoElement = video.@com.google.gwt.media.client.Video::getVideoElement()();
+		var videoPlayer = this;
+		videoElement.onended = function () {
+			listener.@com.badlogic.gdx.video.VideoPlayer.CompletionListener::onCompletionListener(Lcom/badlogic/gdx/files/FileHandle;)(videoPlayer.@com.badlogic.gdx.video.VideoPlayerGwt::currentFile);
+		};
+	}-*/;
+	//@on
+
 	@Override
 	public void setOnCompletionListener (CompletionListener listener) {
-		if (v != null) v.addEndedHandler(new EndedHandler() {
-			@Override
-			public void onEnded (EndedEvent endedEvent) {
-				listener.onCompletionListener(currentFile);
-			}
-		});
+		if (v != null) setEndedCaller(listener);
 	}
 
 	@Override
