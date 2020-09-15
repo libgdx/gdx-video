@@ -19,6 +19,8 @@ package com.badlogic.gdx.video;
 import java.io.FileNotFoundException;
 
 import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.utils.Null;
 
 class VideoPlayerStub implements VideoPlayer {
 
@@ -28,17 +30,14 @@ class VideoPlayerStub implements VideoPlayer {
 	}
 
 	@Override
-	public boolean render () {
-		return false;
+	@Null
+	public Texture getTexture () {
+		return null;
 	}
 
 	@Override
 	public boolean isBuffered () {
 		return true;
-	}
-
-	@Override
-	public void resize (int width, int height) {
 	}
 
 	@Override

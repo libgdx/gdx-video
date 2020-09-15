@@ -25,47 +25,17 @@ import java.nio.channels.ReadableByteChannel;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
-import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.Mesh;
-import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Pixmap.Format;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.VertexAttribute;
-import com.badlogic.gdx.graphics.glutils.ShaderProgram;
-import com.badlogic.gdx.utils.viewport.FitViewport;
-import com.badlogic.gdx.utils.viewport.Viewport;
+import com.badlogic.gdx.utils.Null;
 import com.badlogic.gdx.video.VideoDecoder.VideoDecoderBuffers;
 
 /** Desktop implementation of the VideoPlayer
  *
  * @author Rob Bogie <rob.bogie@codepoke.net> */
 public class VideoPlayerDesktop implements VideoPlayer {
-
-	//@off
-	 private static final String vertexShader = "attribute vec4 a_position;    \n" +
-		 "attribute vec2 a_texCoord0;\n" +
-		 "uniform mat4 u_worldView;\n" +
-		 "varying vec2 v_texCoords;" +
-		 "void main()                  \n" +
-		 "{                            \n" +
-		 "   v_texCoords = a_texCoord0; \n" +
-		 "   gl_Position =  u_worldView * a_position;  \n" +
-		 "}                            \n";
-	 private static final String fragmentShader = "varying vec2 v_texCoords;\n" +
-		 "uniform sampler2D u_texture;\n" +
-		 "void main()                                  \n" +
-		 "{                                            \n" +
-		 "  gl_FragColor = texture2D(u_texture, v_texCoords);\n" +
-		 "}";
-
-	// @on
-
-	Viewport viewport;
-	Camera cam;
-
 	VideoDecoder decoder;
-	Pixmap image;
 	Texture texture;
 	RawMusic audio;
 	long startTime = 0;
@@ -77,37 +47,14 @@ public class VideoPlayerDesktop implements VideoPlayer {
 	boolean paused = false;
 	long timeBeforePause = 0;
 
-	ShaderProgram shader = new ShaderProgram(vertexShader, fragmentShader);
-
-	Mesh mesh;
-	boolean customMesh = false;
-
 	int currentVideoWidth, currentVideoHeight;
 	VideoSizeListener sizeListener;
 	CompletionListener completionListener;
 	FileHandle currentFile;
 
 	boolean playing = false;
-	private int primitiveType = GL20.GL_TRIANGLES;
 
 	public VideoPlayerDesktop () {
-		this(new FitViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight()));
-	}
-
-	public VideoPlayerDesktop (Viewport viewport) {
-		this.viewport = viewport;
-
-		mesh = new Mesh(true, 4, 6, VertexAttribute.Position(), VertexAttribute.TexCoords(0));
-		mesh.setIndices(new short[] {0, 1, 2, 2, 3, 0});
-
-		cam = viewport.getCamera();
-	}
-
-	public VideoPlayerDesktop (Camera cam, Mesh mesh, int primitiveType) {
-		this.cam = cam;
-		this.mesh = mesh;
-		this.primitiveType = primitiveType;
-		customMesh = true;
 	}
 
 	@Override
@@ -134,7 +81,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
 		fileChannel = Channels.newChannel(inputStream);
 
 		decoder = new VideoDecoder();
-		VideoDecoderBuffers buffers = null;
+		VideoDecoderBuffers buffers;
 		try {
 			buffers = decoder.loadStream(this, "readFileContents");
 
@@ -157,29 +104,8 @@ public class VideoPlayerDesktop implements VideoPlayer {
 			sizeListener.onVideoSize(currentVideoWidth, currentVideoHeight);
 		}
 
-		image = new Pixmap(buffers.getVideoWidth(), buffers.getVideoHeight(), Format.RGB888);
-
-		float x = -buffers.getVideoWidth() / 2f;
-		float y = -buffers.getVideoHeight() / 2f;
-		float width = buffers.getVideoWidth();
-		float height = buffers.getVideoHeight();
-
-		//@off
-		if (!customMesh)
-			mesh.setVertices(
-					new float[] {x, y, 0, 0, 1, x + width, y, 0, 1, 1, x + width, y + height, 0, 1, 0, x, y + height, 0, 0, 0});
-	  	//@on
-
-		if (viewport != null) viewport.setWorldSize(width, height);
 		playing = true;
 		return true;
-	}
-
-	@Override
-	public void resize (int width, int height) {
-		if (!customMesh) {
-			viewport.update(width, height);
-		}
 	}
 
 	/** Called by jni to fill in the file buffer.
@@ -198,7 +124,8 @@ public class VideoPlayerDesktop implements VideoPlayer {
 	}
 
 	@Override
-	public boolean render () {
+	@Null
+	public Texture getTexture () {
 		if (decoder != null && !paused) {
 			if (startTime == 0) {
 				// Since startTime is 0, this means that we should now display the first frame of the video, and set the
@@ -218,11 +145,9 @@ public class VideoPlayerDesktop implements VideoPlayer {
 						GL20.GL_UNSIGNED_BYTE, videoData);
 				} else {
 					playing = false;
-					renderTexture();
 					if (completionListener != null) {
 						completionListener.onCompletionListener(currentFile);
 					}
-					return false;
 				}
 			}
 
@@ -236,19 +161,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
 			}
 
 		}
-
-		if (texture != null) {
-			renderTexture();
-		}
-		return true;
-	}
-
-	private void renderTexture () {
-		texture.bind();
-		shader.bind();
-		shader.setUniformMatrix("u_worldView", cam.combined);
-		shader.setUniformi("u_texture", 0);
-		mesh.render(shader, primitiveType);
+		return texture;
 	}
 
 	/** Will return whether the buffer is filled. At the time of writing, the buffer used can store 10 frames of video. You can
@@ -274,10 +187,6 @@ public class VideoPlayerDesktop implements VideoPlayer {
 		if (texture != null) {
 			texture.dispose();
 			texture = null;
-		}
-		if (image != null) {
-			image.dispose();
-			image = null;
 		}
 		if (decoder != null) {
 			decoder.dispose();
@@ -321,10 +230,6 @@ public class VideoPlayerDesktop implements VideoPlayer {
 	@Override
 	public void dispose () {
 		stop();
-
-		if (!customMesh && mesh != null) {
-			mesh.dispose();
-		}
 	}
 
 	@Override

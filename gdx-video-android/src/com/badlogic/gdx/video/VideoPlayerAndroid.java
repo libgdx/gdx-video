@@ -16,9 +16,6 @@
 
 package com.badlogic.gdx.video;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.graphics.SurfaceTexture;
@@ -33,101 +30,73 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.Surface;
-
 import com.badlogic.gdx.Files.FileType;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.android.AndroidApplication;
 import com.badlogic.gdx.files.FileHandle;
-import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.Mesh;
-import com.badlogic.gdx.graphics.VertexAttribute;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.glutils.FrameBuffer;
+import com.badlogic.gdx.graphics.glutils.ImmediateModeRenderer20;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
-import com.badlogic.gdx.utils.viewport.FitViewport;
-import com.badlogic.gdx.utils.viewport.Viewport;
+import com.badlogic.gdx.math.Matrix4;
+import com.badlogic.gdx.utils.Null;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
 
 /** Android implementation of the VideoPlayer class.
  *
  * @author Rob Bogie <rob.bogie@codepoke.net> */
 public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener {
-
-	private static final String ATTRIBUTE_TEXCOORDINATE = ShaderProgram.TEXCOORD_ATTRIBUTE + "0";
-	private static final String VARYING_TEXCOORDINATE = "varTexCoordinate";
-	private static final String UNIFORM_TEXTURE = "texture";
-	private static final String UNIFORM_CAMERATRANSFORM = "camTransform";
-
 	//@off
-	String vertexShaderCode = "attribute highp vec4 a_position; \n" +
-		"attribute highp vec2 " + ATTRIBUTE_TEXCOORDINATE + ";" +
-		"uniform highp mat4 " + UNIFORM_CAMERATRANSFORM + ";" +
-		"varying highp vec2 " + VARYING_TEXCOORDINATE + ";" +
-		"void main() \n" +
-		"{ \n" +
-		" gl_Position = " + UNIFORM_CAMERATRANSFORM + " * a_position; \n" +
-		" varTexCoordinate = " + ATTRIBUTE_TEXCOORDINATE + ";\n" +
-		"} \n";
+	String vertexShaderCode =
+			"#define highp\n" +
+					"attribute highp vec4 a_position; \n" +
+					"attribute highp vec2 a_texCoord0;" +
+					"uniform highp mat4 u_projModelView;" +
+					"varying highp vec2 v_texCoord0;" +
+					"void main() \n" +
+					"{ \n" +
+					" gl_Position = u_projModelView * a_position; \n" +
+					" v_texCoord0 = a_texCoord0;\n" +
+					"} \n";
 
-	String fragmentShaderCode = "#extension GL_OES_EGL_image_external : require\n" +
-		"uniform samplerExternalOES " + UNIFORM_TEXTURE + ";" +
-		"varying highp vec2 " + VARYING_TEXCOORDINATE + ";" +
-		"void main()                 \n" +
-		"{                           \n" +
-		"  gl_FragColor = texture2D(" + UNIFORM_TEXTURE + ", " + VARYING_TEXCOORDINATE + ");    \n" +
-		"}";
+	String fragmentShaderCode =
+			"#extension GL_OES_EGL_image_external : require\n" +
+					"uniform samplerExternalOES u_sampler0;" +
+					"varying highp vec2 v_texCoord0;" +
+					"void main()                 \n" +
+					"{                           \n" +
+					"  gl_FragColor = texture2D(u_sampler0, v_texCoord0);    \n" +
+					"}";
 	//@on
 
-	private ShaderProgram shader = new ShaderProgram(vertexShaderCode, fragmentShaderCode);
-	private int[] textures = new int[1];
+	private final ShaderProgram shader = new ShaderProgram(vertexShaderCode, fragmentShaderCode);
+	private Matrix4 transform;
+	private final int[] textures = new int[1];
 	private SurfaceTexture videoTexture;
+	private FrameBuffer frame;
+	private ImmediateModeRenderer20 renderer;
 
 	private MediaPlayer player;
 	private boolean prepared = false;
 	private boolean frameAvailable = false;
 	private boolean done = false;
 
-	private Viewport viewport;
-	private Camera cam;
-	private Mesh mesh;
-
-	private boolean customMesh = false;
-
 	VideoSizeListener sizeListener;
 	CompletionListener completionListener;
-	private int primitiveType = GL20.GL_TRIANGLES;
-
 	private float currentVolume = 1.0f;
 
 	/** Used for sending mediaplayer tasks to the Main Looper */
 	private static Handler handler;
 
 	/** Lock used for waiting if the player was not yet created. */
-	Object lock = new Object();
+	final Object lock = new Object();
 
 	public VideoPlayerAndroid () {
-		this(new FitViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight()));
-	}
-
-	public VideoPlayerAndroid (Viewport viewport) {
 		setupRenderTexture();
-
-		this.viewport = viewport;
-		cam = viewport.getCamera();
-		mesh = new Mesh(true, 4, 6, VertexAttribute.Position(), VertexAttribute.TexCoords(0));
-		//@off
-		mesh.setVertices(new float[] {0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0});
-		//@on
-		mesh.setIndices(new short[] {0, 1, 2, 2, 3, 0});
-
-		initializeMediaPlayer();
-	}
-
-	public VideoPlayerAndroid (Camera cam, Mesh mesh, int primitiveType) {
-		this.cam = cam;
-		this.mesh = mesh;
-		this.primitiveType = primitiveType;
-		customMesh = true;
-		setupRenderTexture();
-
 		initializeMediaPlayer();
 	}
 
@@ -170,30 +139,9 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		player.setOnPreparedListener(new OnPreparedListener() {
 			@Override
 			public void onPrepared (MediaPlayer mp) {
-				float x = -mp.getVideoWidth() / 2f;
-				float y = -mp.getVideoHeight() / 2f;
-				float width = mp.getVideoWidth();
-				float height = mp.getVideoHeight();
-
-				//@off
-					if(!customMesh)
-						mesh.setVertices(new float[] {x, y, 0, 0, 1, x + width, y, 0, 1, 1, x + width, y + height, 0, 1, 0, x, y + height, 0, 0, 0});
-					 //@on
-
-				// set viewport world dimensions according to video dimensions and viewport type
-				if (viewport != null) {
-					viewport.setWorldSize(width, height);
-					Gdx.app.postRunnable(new Runnable() {
-						@Override
-						public void run () {
-							// force viewport update to let scaling take effect
-							viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-						}
-					});
-				}
 				prepared = true;
 				if (sizeListener != null) {
-					sizeListener.onVideoSize(width, height);
+					sizeListener.onVideoSize(mp.getVideoWidth(), mp.getVideoHeight());
 				}
 				mp.start();
 			}
@@ -235,35 +183,37 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	}
 
 	@Override
-	public void resize (int width, int height) {
-		if (!customMesh) {
+	@Null
+	public Texture getTexture () {
+		if (!done && prepared) {
+			synchronized (this) {
+				if (frameAvailable) {
+					if (frame == null)
+						frame = new FrameBuffer(Pixmap.Format.RGB888, player.getVideoWidth(), player.getVideoHeight(), false);
+					frame.bind();
+					videoTexture.updateTexImage();
+					frameAvailable = false;
+					frame.begin();
+					shader.bind();
+					Gdx.gl.glActiveTexture(GL20.GL_TEXTURE0);
+					Gdx.gl.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
+					shader.setUniformi("u_sampler0", 0);
 
-			viewport.update(width, height);
-		}
-	}
-
-	@Override
-	public boolean render () {
-		if (done) {
-			return false;
-		}
-		if (!prepared) {
-			return true;
-		}
-		synchronized (this) {
-			if (frameAvailable) {
-				videoTexture.updateTexImage();
-				frameAvailable = false;
+					renderer.begin(transform, GL20.GL_TRIANGLE_STRIP);
+					renderer.texCoord(0, 0);
+					renderer.vertex(0, 0, 0);
+					renderer.texCoord(1, 0);
+					renderer.vertex(1, 0, 0);
+					renderer.texCoord(0, 1);
+					renderer.vertex(0, 1, 0);
+					renderer.texCoord(1, 1);
+					renderer.vertex(1, 1, 0);
+					renderer.end();
+					frame.end();
+				}
 			}
 		}
-
-		// Draw texture
-		GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
-		shader.bind();
-		shader.setUniformMatrix(UNIFORM_CAMERATRANSFORM, cam.combined);
-		mesh.render(shader, primitiveType);
-
-		return !done;
+		return frame != null ? frame.getColorBufferTexture() : null;
 	}
 
 	/** For android, this will return whether the prepareAsync method of the android MediaPlayer is done with preparing.
@@ -284,10 +234,9 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	}
 
 	private void setupRenderTexture () {
-		// Generate the actual texture
-		GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-		GLES20.glGenTextures(1, textures, 0);
-		GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
+		renderer = new ImmediateModeRenderer20(4, false, false, 1);
+		renderer.setShader(shader);
+		transform = new Matrix4().setToOrtho2D(0, 0, 1, 1);
 
 		videoTexture = new SurfaceTexture(textures[0]);
 		videoTexture.setOnFrameAvailableListener(this);
@@ -325,13 +274,9 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
 		GLES20.glDeleteTextures(1, textures, 0);
 
-		if (shader != null) {
-			shader.dispose();
-		}
-
-		if (!customMesh && mesh != null) {
-			mesh.dispose();
-		}
+		if (frame != null) frame.dispose();
+		shader.dispose();
+		renderer.dispose();
 	}
 
 	@Override
