@@ -30,6 +30,11 @@ class VideoPlayerStub implements VideoPlayer {
 	}
 
 	@Override
+	public boolean update () {
+		return false;
+	}
+
+	@Override
 	@Null
 	public Texture getTexture () {
 		return null;

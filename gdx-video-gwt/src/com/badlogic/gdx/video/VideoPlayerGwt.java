@@ -48,8 +48,7 @@ public class VideoPlayerGwt implements VideoPlayer {
 	}
 
 	@Override
-	@Null
-	public Texture getTexture () {
+	public boolean update () {
 		if (v != null) {
 			if (v.getVideoHeight() != height || v.getVideoWidth() != width) {
 				height = v.getVideoHeight();
@@ -66,8 +65,15 @@ public class VideoPlayerGwt implements VideoPlayer {
 				frame.bind();
 				((GwtGL20)Gdx.gl).gl.texImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, GL20.GL_RGB, GL20.GL_UNSIGNED_BYTE,
 					v.getVideoElement());
+				return true;
 			}
 		}
+		return false;
+	}
+
+	@Override
+	@Null
+	public Texture getTexture () {
 		return frame;
 	}
 

@@ -66,8 +66,9 @@ public class GdxVideoTest extends ApplicationAdapter {
 
 		Gdx.gl.glClearColor(0, 0, 0, 0);
 		Gdx.gl.glClear(Gdx.gl.GL_COLOR_BUFFER_BIT);
-		Texture frame = videoPlayer.getTexture();
+		videoPlayer.update();
 		batch.begin();
+		Texture frame = videoPlayer.getTexture();
 		if (frame != null) batch.draw(frame, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		batch.end();
 	}

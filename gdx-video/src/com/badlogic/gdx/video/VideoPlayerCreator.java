@@ -18,6 +18,7 @@ package com.badlogic.gdx.video;
 
 import com.badlogic.gdx.Application.ApplicationType;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.utils.Null;
 import com.badlogic.gdx.utils.reflect.ClassReflection;
 import com.badlogic.gdx.utils.reflect.ReflectionException;
 
@@ -31,6 +32,7 @@ public class VideoPlayerCreator {
 	/** Creates a VideoPlayer.
 	 *
 	 * @return A new instance of VideoPlayer */
+	@Null
 	public static VideoPlayer createVideoPlayer () {
 		initialize();
 		if (videoPlayerClass == null) return new VideoPlayerStub();

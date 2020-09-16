@@ -45,8 +45,10 @@ public interface VideoPlayer extends Disposable {
 
 	/** This function needs to be called every frame, so that the player can update all the buffers and you can draw the frame.
 	 * Normal use case is to start rendering after {@link #isBuffered()} returns true.
-	 *
-	 * @return It returns the current frame. Null if the video is not playing */
+	 * @return if a new frame is available as texture */
+	boolean update ();
+
+	/** @return The current video frame. Null if video was not started yet */
 	@Null
 	Texture getTexture ();
 

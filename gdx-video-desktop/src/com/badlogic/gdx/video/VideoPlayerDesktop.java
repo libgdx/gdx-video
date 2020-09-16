@@ -129,8 +129,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
 	}
 
 	@Override
-	@Null
-	public Texture getTexture () {
+	public boolean update () {
 		if (decoder != null && !paused) {
 			if (startTime == 0) {
 				// Since startTime is 0, this means that we should now display the first frame of the video, and set the
@@ -141,6 +140,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
 				}
 			}
 
+			boolean newFrame = false;
 			if (!showAlreadyDecodedFrame) {
 				ByteBuffer videoData = decoder.nextVideoFrame();
 				if (videoData != null) {
@@ -148,6 +148,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
 					texture.bind();
 					Gdx.gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, currentVideoWidth, currentVideoHeight, 0, GL20.GL_RGB,
 						GL20.GL_UNSIGNED_BYTE, videoData);
+					newFrame = true;
 				} else {
 					playing = false;
 					if (completionListener != null) {
@@ -164,8 +165,14 @@ public class VideoPlayerDesktop implements VideoPlayer {
 				// Difference is more than a frame, draw this one twice
 				showAlreadyDecodedFrame = true;
 			}
-
+			return newFrame;
 		}
+		return false;
+	}
+
+	@Override
+	@Null
+	public Texture getTexture () {
 		return texture;
 	}
 

@@ -32,7 +32,7 @@ import android.util.Log;
 import android.view.Surface;
 import com.badlogic.gdx.Files.FileType;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.backends.android.AndroidApplication;
+import com.badlogic.gdx.backends.android.AndroidApplicationBase;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Pixmap;
@@ -77,13 +77,15 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	private Matrix4 transform;
 	private final int[] textures = new int[1];
 	private SurfaceTexture videoTexture;
-	private FrameBuffer frame;
+	private FrameBuffer fbo;
+	private Texture frame;
 	private ImmediateModeRenderer20 renderer;
 
 	private MediaPlayer player;
 	private boolean prepared = false;
 	private boolean frameAvailable = false;
-	private boolean done = false;
+	/** If the external should be drawn to the fbo and make it available thru {@link #getTexture()} */
+	public boolean renderToFbo = true;
 
 	VideoSizeListener sizeListener;
 	CompletionListener completionListener;
@@ -134,7 +136,6 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		}
 
 		player.reset();
-		done = false;
 
 		player.setOnPreparedListener(new OnPreparedListener() {
 			@Override
@@ -143,9 +144,9 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 				if (sizeListener != null) {
 					sizeListener.onVideoSize(mp.getVideoWidth(), mp.getVideoHeight());
 				}
-				if (frame != null && (frame.getWidth() != mp.getVideoWidth() || frame.getHeight() != mp.getVideoHeight())) {
-					frame.dispose();
-					frame = null;
+				if (fbo != null && (fbo.getWidth() != mp.getVideoWidth() || fbo.getHeight() != mp.getVideoHeight())) {
+					fbo.dispose();
+					fbo = null;
 				}
 				mp.start();
 			}
@@ -153,7 +154,6 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		player.setOnErrorListener(new OnErrorListener() {
 			@Override
 			public boolean onError (MediaPlayer mp, int what, int extra) {
-				done = true;
 				Log.e("VideoPlayer", String.format("Error occured: %d, %d\n", what, extra));
 				return false;
 			}
@@ -162,7 +162,6 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		player.setOnCompletionListener(new OnCompletionListener() {
 			@Override
 			public void onCompletion (MediaPlayer mp) {
-				done = true;
 				if (completionListener != null) {
 					completionListener.onCompletionListener(file);
 				}
@@ -171,7 +170,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
 		try {
 			if (file.type() == FileType.Classpath || (file.type() == FileType.Internal && !file.file().exists())) {
-				AssetManager assets = ((AndroidApplication)Gdx.app).getAssets();
+				AssetManager assets = ((AndroidApplicationBase)Gdx.app).getContext().getAssets();
 				AssetFileDescriptor descriptor = assets.openFd(file.path());
 				player.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(), descriptor.getLength());
 			} else {
@@ -186,23 +185,30 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		return true;
 	}
 
+	/** Get external texture directly without framebuffer
+	 * @return texture handle to be used with external OES target, -1 if texture is not available */
+	public int getTextureExternal () {
+		if (prepared) {
+			return textures[0];
+		}
+		return -1;
+	}
+
 	@Override
-	@Null
-	public Texture getTexture () {
-		if (!done && prepared) {
-			synchronized (this) {
-				if (frameAvailable) {
-					if (frame == null)
-						frame = new FrameBuffer(Pixmap.Format.RGB888, player.getVideoWidth(), player.getVideoHeight(), false);
-					frame.bind();
-					videoTexture.updateTexImage();
-					frameAvailable = false;
-					frame.begin();
+	public boolean update () {
+		synchronized (this) {
+			if (frameAvailable) {
+				frameAvailable = false;
+				videoTexture.updateTexImage();
+				if (renderToFbo) {
+					if (fbo == null)
+						fbo = new FrameBuffer(Pixmap.Format.RGB888, player.getVideoWidth(), player.getVideoHeight(), false);
+					fbo.begin();
 					shader.bind();
+
 					Gdx.gl.glActiveTexture(GL20.GL_TEXTURE0);
 					Gdx.gl.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
 					shader.setUniformi("u_sampler0", 0);
-
 					renderer.begin(transform, GL20.GL_TRIANGLE_STRIP);
 					renderer.texCoord(0, 0);
 					renderer.vertex(0, 0, 0);
@@ -213,11 +219,19 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 					renderer.texCoord(1, 1);
 					renderer.vertex(1, 1, 0);
 					renderer.end();
-					frame.end();
+					fbo.end();
+					frame = fbo.getColorBufferTexture();
 				}
+				return true;
 			}
 		}
-		return frame != null ? frame.getColorBufferTexture() : null;
+		return false;
+	}
+
+	@Override
+	@Null
+	public Texture getTexture () {
+		return frame;
 	}
 
 	/** For android, this will return whether the prepareAsync method of the android MediaPlayer is done with preparing.
@@ -234,7 +248,6 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 			player.stop();
 		}
 		prepared = false;
-		done = true;
 	}
 
 	private void setupRenderTexture () {
@@ -278,6 +291,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
 		GLES20.glDeleteTextures(1, textures, 0);
 
+		if (fbo != null) fbo.dispose();
 		if (frame != null) frame.dispose();
 		shader.dispose();
 		renderer.dispose();
