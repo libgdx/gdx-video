@@ -58,6 +58,10 @@ public class VideoPlayerGwt implements VideoPlayer {
 				if (videoSizeListener != null) videoSizeListener.onVideoSize(width, height);
 			}
 			if (!v.isPaused() && isBuffered() && v.getVideoWidth() > 0 && v.getVideoHeight() > 0) {
+				if (frame != null && (frame.getWidth() != width || frame.getHeight() != height)) {
+					frame.dispose();
+					frame = null;
+				}
 				if (frame == null) frame = new Texture(width, height, Pixmap.Format.RGB888);
 				frame.bind();
 				((GwtGL20)Gdx.gl).gl.texImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, GL20.GL_RGB, GL20.GL_UNSIGNED_BYTE,

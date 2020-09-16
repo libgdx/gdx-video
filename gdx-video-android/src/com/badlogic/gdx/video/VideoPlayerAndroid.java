@@ -143,6 +143,10 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 				if (sizeListener != null) {
 					sizeListener.onVideoSize(mp.getVideoWidth(), mp.getVideoHeight());
 				}
+				if (frame != null && (frame.getWidth() != mp.getVideoWidth() || frame.getHeight() != mp.getVideoHeight())) {
+					frame.dispose();
+					frame = null;
+				}
 				mp.start();
 			}
 		});

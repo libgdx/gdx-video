@@ -88,10 +88,15 @@ public class VideoPlayerDesktop implements VideoPlayer {
 			if (buffers != null) {
 				ByteBuffer audioBuffer = buffers.getAudioBuffer();
 				if (audioBuffer != null) {
+					if (audio != null) audio.dispose();
 					audio = new RawMusic(decoder, audioBuffer, buffers.getAudioChannels(), buffers.getAudioSampleRate());
 				}
 				currentVideoWidth = buffers.getVideoWidth();
 				currentVideoHeight = buffers.getVideoHeight();
+				if (texture != null && (texture.getWidth() != currentVideoWidth || texture.getHeight() != currentVideoHeight)) {
+					texture.dispose();
+					texture = null;
+				}
 			} else {
 				return false;
 			}
