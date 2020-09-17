@@ -220,6 +220,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 					renderer.vertex(1, 1, 0);
 					renderer.end();
 					fbo.end();
+					if (frame != null) frame.dispose();
 					frame = fbo.getColorBufferTexture();
 				}
 				return true;
