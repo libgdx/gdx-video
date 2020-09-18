@@ -15,9 +15,8 @@ configurations {
 
 dependencies {
     implementation project(":gdx-video-core")
+    implementation "com.badlogicgames.gdx:gdx:$gdxVersion"
     excluded "com.badlogicgames.gdx:gdx-jnigen:$gdxVersion"
-    implementation "com.badlogicgames.gdx:gdx-backend-lwjgl:$gdxVersion"
-    implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
 }
 
 apply plugin: "com.badlogicgames.gdx.gdx-jnigen"

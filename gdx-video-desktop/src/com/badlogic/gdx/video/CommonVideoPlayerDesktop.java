@@ -24,6 +24,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Pixmap.Format;
@@ -34,10 +35,10 @@ import com.badlogic.gdx.video.VideoDecoder.VideoDecoderBuffers;
 /** Desktop implementation of the VideoPlayer
  *
  * @author Rob Bogie <rob.bogie@codepoke.net> */
-public class VideoPlayerDesktop implements VideoPlayer {
+abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 	VideoDecoder decoder;
 	Texture texture;
-	RawMusic audio;
+	Music audio;
 	long startTime = 0;
 	boolean showAlreadyDecodedFrame = false;
 
@@ -54,8 +55,10 @@ public class VideoPlayerDesktop implements VideoPlayer {
 
 	boolean playing = false;
 
-	public VideoPlayerDesktop () {
+	public CommonVideoPlayerDesktop () {
 	}
+
+	abstract Music createMusic (VideoDecoder decoder, ByteBuffer audioBuffer, int audioChannels, int sampleRate);
 
 	@Override
 	public boolean play (FileHandle file) throws FileNotFoundException {
@@ -89,7 +92,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
 				ByteBuffer audioBuffer = buffers.getAudioBuffer();
 				if (audioBuffer != null) {
 					if (audio != null) audio.dispose();
-					audio = new RawMusic(decoder, audioBuffer, buffers.getAudioChannels(), buffers.getAudioSampleRate());
+					audio = createMusic(decoder, audioBuffer, buffers.getAudioChannels(), buffers.getAudioSampleRate());
 				}
 				currentVideoWidth = buffers.getVideoWidth();
 				currentVideoHeight = buffers.getVideoHeight();

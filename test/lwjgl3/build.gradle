@@ -7,9 +7,10 @@ sourceCompatibility = 8.0
 
 dependencies {
 	implementation project(':test:core')
-	implementation project(':gdx-video-desktop')
+	implementation project(':gdx-video-desktop:gdx-video-lwjgl3')
 	implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
 	implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+	implementation fileTree(dir: 'libs', include: ['*.jar'])
 }
 
 import org.gradle.internal.os.OperatingSystem
