@@ -153,6 +153,16 @@ public class VideoPlayerGwt implements VideoPlayer {
 	}
 
 	@Override
+	public void setLooping (boolean looping) {
+		v.setLoop(looping);
+	}
+
+	@Override
+	public boolean isLooping () {
+		return v.isLoop();
+	}
+
+	@Override
 	public void setVolume (float volume) {
 		if (v != null) v.setVolume(volume);
 	}

@@ -97,4 +97,14 @@ class VideoPlayerStub implements VideoPlayer {
 	public float getVolume () {
 		return 0;
 	}
+
+	@Override
+	public void setLooping (boolean looping) {
+
+	}
+
+	@Override
+	public boolean isLooping () {
+		return false;
+	}
 }

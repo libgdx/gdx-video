@@ -341,6 +341,16 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	}
 
 	@Override
+	public void setLooping (boolean looping) {
+		player.setLooping(looping);
+	}
+
+	@Override
+	public boolean isLooping () {
+		return player.isLooping();
+	}
+
+	@Override
 	public int getCurrentTimestamp () {
 		return player.getCurrentPosition();
 	}

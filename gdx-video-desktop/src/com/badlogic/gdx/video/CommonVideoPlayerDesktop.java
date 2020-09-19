@@ -283,6 +283,16 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 	}
 
 	@Override
+	public void setLooping (boolean looping) {
+		// TODO
+	}
+
+	@Override
+	public boolean isLooping () {
+		return false;
+	}
+
+	@Override
 	public int getCurrentTimestamp () {
 		return (int)(decoder.getCurrentFrameTimestamp() * 1000);
 	}

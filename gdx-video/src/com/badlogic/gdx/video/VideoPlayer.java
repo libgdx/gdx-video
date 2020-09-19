@@ -120,4 +120,7 @@ public interface VideoPlayer extends Disposable {
 	 * @return The volume of the audio in range from 0.0 (mute) to 1.0 (maximum) */
 	float getVolume ();
 
+	void setLooping (boolean looping);
+
+	boolean isLooping ();
 }
