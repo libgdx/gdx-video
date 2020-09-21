@@ -26,17 +26,29 @@ Gdx-video is available in maven with Official builds and Snapshot builds. You ca
 #### Gradle dependency declarations
 Core:
 ```groovy
-compile "com.badlogicgames.gdxvideo:gdx-video:0.0.1"
+implementation "com.badlogicgames.gdxvideo:gdx-video:0.0.1"
 ```
 Desktop:
 ```groovy
-compile "com.badlogicgames.gdxvideo:gdx-video-desktop:0.0.1"
-compile "com.badlogicgames.gdxvideo:gdx-video-platform:0.0.1:natives-desktop"
+implementation "com.badlogicgames.gdxvideo:gdx-video-desktop:0.0.1"
+implementation "com.badlogicgames.gdxvideo:gdx-video-platform:0.0.1:natives-desktop"
 ```
 Android:
 ```groovy
-compile "com.badlogicgames.gdxvideo:gdx-video-android:0.0.1"
+implementation "com.badlogicgames.gdxvideo:gdx-video-android:0.0.1"
 ```
+
+Html:
+
+```groovy
+implementation "com.badlogicgames.gdxvideo:gdx-video:0.0.1:sources"
+implementation "com.badlogicgames.gdxvideo:gdx-video-gwt:0.0.1"
+implementation "com.badlogicgames.gdxvideo:gdx-video-gwt:0.0.1:sources"
+```
+You also need to add the following file to your GdxDefinition.gwt.xml in your html project:
+`````xml
+<inherits name="com.badlogic.gdx.video.gdx_video_gwt" />
+`````
 #### Maven
 Core:
 ```xml
@@ -76,3 +88,4 @@ Android:
 ### Working from source
 
 ## Licensing
+The project is licensed under the Apache 2 License, meaning you can use it free of charge, without strings attached in commercial and non-commercial projects. We love to get (non-mandatory) credit in case you release a game or app using this project!
