@@ -26,11 +26,6 @@ android {
 dependencies {
     api project(":gdx-video-core")
     api "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
-    api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi"
-    api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
-    api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-arm64-v8a"
-    api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86"
-    api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86_64"
 }
 
 eclipse.project {

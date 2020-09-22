@@ -1,4 +1,4 @@
-apply plugin: "java"
+apply plugin: "java-library"
 
 sourceSets {
     main {
@@ -9,7 +9,6 @@ sourceSets {
 }
 
 dependencies {
-    implementation project(":gdx-video-core")
-    implementation project(":gdx-video-desktop")
-    implementation "com.badlogicgames.gdx:gdx-backend-lwjgl:$gdxVersion"
+    api project(":gdx-video-desktop")
+    api "com.badlogicgames.gdx:gdx-backend-lwjgl:$gdxVersion"
 }
