@@ -36,7 +36,7 @@ jobs:
 
     - run: brew install yasm ccache
     - name: Setup ccache
-      run: export PATH="/usr/lib/ccache/bin/:$PATH"
+      run: export PATH=/usr/local/opt/ccache/libexec:$PATH
     - name: Build with Gradle
       run: ./gradlew buildFFmpegMacos64 jnigen jnigenBuild
     - name: Upload macOS natives
@@ -94,7 +94,7 @@ jobs:
     - name: Install yasm for ffmpeg
       run: sudo apt-get -yq install yasm
     - name: Setup ccache
-      run: export PATH="/usr/lib/ccache/bin/:$PATH"
+      run: export PATH=/usr/lib/ccache:$PATH
     - name: Download macOS natives
       uses: actions/download-artifact@v2.0.5
       with:
