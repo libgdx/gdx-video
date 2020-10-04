@@ -24,21 +24,27 @@ Gdx-video is available in maven with Official builds and Snapshot builds. You ca
 * **Snapshots** For snapshot builds, use https://oss.sonatype.org/content/repositories/snapshots
 
 #### Gradle dependency declarations
-Core:
+##### Core:
 ```groovy
 implementation "com.badlogicgames.gdxvideo:gdx-video:0.0.1"
 ```
-Desktop:
+##### Desktop:
 ```groovy
-implementation "com.badlogicgames.gdxvideo:gdx-video-desktop:0.0.1"
+implementation "com.badlogicgames.gdxvideo:gdx-video-lwjgl:0.0.1"
 implementation "com.badlogicgames.gdxvideo:gdx-video-platform:0.0.1:natives-desktop"
 ```
-Android:
+or
+```groovy
+implementation "com.badlogicgames.gdxvideo:gdx-video-lwjgl3:0.0.1"
+implementation "com.badlogicgames.gdxvideo:gdx-video-platform:0.0.1:natives-desktop"
+```
+
+##### Android:
 ```groovy
 implementation "com.badlogicgames.gdxvideo:gdx-video-android:0.0.1"
 ```
 
-Html:
+##### Html:
 
 ```groovy
 implementation "com.badlogicgames.gdxvideo:gdx-video:0.0.1:sources"
@@ -62,7 +68,7 @@ Desktop:
 ```xml
 <dependency>
   <groupId>com.badlogicgames.gdxvideo</groupId>
-  <artifactId>gdx-video-desktop</artifactId>
+  <artifactId>gdx-video-lwjgl</artifactId>
   <version>0.0.1</version>
 </dependency>
 <dependency>
