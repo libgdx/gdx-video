@@ -16,7 +16,7 @@ A libGDX cross platform video rendering extension
 
 ## Getting Started
 
-Gdx-video is available in maven with Official builds and Snapshot builds. You can find them at the following repositories:
+Gdx-video is currently **NOT** available in maven with official builds and snapshot builds. You can find them at the following repositories:
 
 #### Repositories
 
