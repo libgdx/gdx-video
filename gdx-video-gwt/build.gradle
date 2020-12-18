@@ -1,5 +1,15 @@
 apply plugin: "java-library"
 
+apply from: '../publish.gradle'
+
+configurations {
+    custom
+    compile.extendsFrom custom
+}
+
+targetCompatibility = 1.7
+sourceCompatibility = 1.7
+
 sourceSets {
     main {
         java {
@@ -16,4 +26,9 @@ dependencies {
     api "com.badlogicgames.gdx:gdx:$gdxVersion:sources"
     api "com.badlogicgames.gdx:gdx-backend-gwt:$gdxVersion"
     api "com.badlogicgames.gdx:gdx-backend-gwt:$gdxVersion:sources"
+}
+
+// see https://stackoverflow.com/questions/52788326/gradle-javadoc-gwt-error-cannot-access-event-in-import-com-google-gwt-user-cli
+javadoc {
+    options.addStringOption("sourcepath", "")
 }

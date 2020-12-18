@@ -1,5 +1,15 @@
 apply plugin: "java-library"
 
+apply from: '../../publish.gradle'
+
+configurations {
+    custom
+    compile.extendsFrom custom
+}
+
+targetCompatibility = 1.7
+sourceCompatibility = 1.7
+
 sourceSets {
     main {
         java {

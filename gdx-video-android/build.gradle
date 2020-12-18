@@ -6,11 +6,12 @@ repositories {
 }
 
 android {
-    compileSdkVersion 30
-    buildToolsVersion "29.0.3"
+    compileSdkVersion compileSdk
+    buildToolsVersion "${buildTools}"
 
     defaultConfig {
-        minSdkVersion 16
+        minSdkVersion minSdk
+        targetSdkVersion targetSdk
     }
 
     sourceSets {
@@ -20,6 +21,11 @@ android {
                 srcDirs = ["src/"]
             }
         }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_7
+        targetCompatibility JavaVersion.VERSION_1_7
     }
 }
 
@@ -31,3 +37,5 @@ dependencies {
 eclipse.project {
     name = projectGroup + "-android"
 }
+
+apply from : '../androidpublish.gradle'

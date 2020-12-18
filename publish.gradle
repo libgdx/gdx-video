@@ -1,0 +1,81 @@
+apply plugin: 'maven'
+apply plugin: 'signing'
+
+afterEvaluate { project ->
+    uploadArchives {
+        repositories {
+            mavenDeployer {
+                beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+                if (isLocalBuild()) {
+                    repository(url: getLocalRepositoryUrl())
+                } else if (isReleaseBuild()) {
+                    repository(url: getReleaseRepositoryUrl()) {
+                        authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
+                    }
+                } else {
+                    snapshotRepository(url: getSnapshotRepositoryUrl()) {
+                        authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
+                    }
+                }
+
+
+                pom.project {
+                    name rootProject.name
+                    description 'Video Extension for libGDX'
+                    url 'https://github.com/libgdx/gdx-video'
+
+                    scm {
+                        url 'scm:git@github.com:libgdx/gdx-video.git'
+                        connection 'scm:git@github.com:libgdx/gdx-video.git'
+                        developerConnection 'scm:git@github.com:libgdx/gdx-video.git'
+                    }
+
+                    licenses {
+                        license {
+                            name 'The Apache Software License, Version 2.0'
+                            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                            distribution 'repo'
+                        }
+                    }
+
+                    developers {
+                        developer {
+                            id 'SimonIT'
+                            name 'Simon Bullik'
+                            email 'simonit.orig@gmail.com'
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    signing {
+        required { isReleaseBuild() && gradle.taskGraph.hasTask("uploadArchives") }
+        sign configurations.archives
+    }
+
+    task libraryJar(type: Jar, dependsOn: classes) {
+        from sourceSets.main.output.classesDirs
+        from configurations.custom.collect { it.isDirectory() ? it : zipTree(it) }
+        classifier = 'library'
+    }
+
+    task sourcesJar(type: Jar, dependsOn: classes) {
+        from sourceSets.main.allSource
+        classifier = 'sources'
+    }
+
+    task javadocJar(type: Jar, dependsOn: javadoc) {
+        from javadoc.destinationDir
+        classifier = 'javadoc'
+    }
+
+    artifacts {
+        archives libraryJar
+        archives sourcesJar
+        archives javadocJar
+    }
+
+}

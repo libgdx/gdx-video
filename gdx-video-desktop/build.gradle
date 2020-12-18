@@ -1,5 +1,8 @@
 apply plugin: "java-library"
 
+targetCompatibility = 1.7
+sourceCompatibility = 1.7
+
 sourceSets {
     main {
         java {
@@ -142,7 +145,7 @@ task buildFFmpeg() {
 	dependsOn buildFFmpegWindows32, buildFFmpegWindows64, buildFFmpegLinux32, buildFFmpegLinux64, buildFFmpegLinuxARM32, buildFFmpegLinuxARM64
 }
 
-ext.genLibs = { build -> 
+ext.genLibs = { build ->
 	String libs = "";
 	libs += " -L" + file("FFmpeg/build-"+build+"/libavcodec").absolutePath
 	libs += " -L" + file("FFmpeg/build-"+build+"/libavformat").absolutePath
@@ -158,7 +161,7 @@ jnigen {
         headerDirs = ["../FFmpeg"]
         cFlags += " -fvisibility=hidden "
         cppFlags += " -fvisibility=hidden "
-        //Using `-lavcodec -lavformat` order on linux drops filesize by half but mingw wont compile??? 
+        //Using `-lavcodec -lavformat` order on linux drops filesize by half but mingw wont compile???
         libraries += " -lavformat -lavcodec -lavutil -lswscale -lswresample -lpthread "
     }
     add(Windows, x32) {
