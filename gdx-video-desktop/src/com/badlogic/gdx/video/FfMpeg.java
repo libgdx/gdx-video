@@ -21,7 +21,7 @@ import com.badlogic.gdx.jnigen.JniGenSharedLibraryLoader;
 /** This class manages the loading of the native libraries that wrap FFMpeg. It allows changing the path from which it loads the
  * libraries, and defaults to loading the file from jar containing the class.
  *
- * @author Rob Bogie <rob.bogie@codepoke.net> */
+ * @author Rob Bogie rob.bogie@codepoke.net */
 public class FfMpeg {
 	public static final String NATIVE_LIBRARY_NAME = "gdx-video-desktop";
 
