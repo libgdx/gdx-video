@@ -75,8 +75,14 @@ afterEvaluate { project ->
         classifier = 'javadoc'
     }
 
+    task nativesJar(type: Jar, dependsOn: classes) {
+        from fileTree("libs").files
+        classifier = 'natives'
+    }
+
     artifacts {
-        archives libraryJar
+        //archives libraryJar
+        //archives nativesJar
         archives sourcesJar
         archives javadocJar
     }

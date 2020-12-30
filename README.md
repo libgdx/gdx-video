@@ -31,12 +31,12 @@ implementation "com.badlogicgames.gdxvideo:gdx-video:0.0.1"
 ##### Desktop:
 ```groovy
 implementation "com.badlogicgames.gdxvideo:gdx-video-lwjgl:0.0.1"
-implementation "com.badlogicgames.gdxvideo:gdx-video-platform:0.0.1:natives-desktop"
+implementation "com.badlogicgames.gdxvideo:gdx-video-desktop:0.0.1"
 ```
 or
 ```groovy
 implementation "com.badlogicgames.gdxvideo:gdx-video-lwjgl3:0.0.1"
-implementation "com.badlogicgames.gdxvideo:gdx-video-platform:0.0.1:natives-desktop"
+implementation "com.badlogicgames.gdxvideo:gdx-video-desktop:0.0.1"
 ```
 
 ##### Android:
@@ -73,9 +73,8 @@ Desktop:
 </dependency>
 <dependency>
   <groupId>com.badlogicgames.gdxvideo</groupId>
-  <artifactId>gdx-video-platform</artifactId>
+  <artifactId>gdx-video-desktop</artifactId>
   <version>0.0.1</version>
-  <classifier>natives-desktop</classifier>
 </dependency>
 ```
 Android:

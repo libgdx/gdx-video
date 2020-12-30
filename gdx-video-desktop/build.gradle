@@ -200,6 +200,10 @@ jnigen {
     }
 }
 
+jar {
+    from fileTree("libs").files
+}
+
 eclipse.project {
     name = projectGroup + "-desktop"
 }
