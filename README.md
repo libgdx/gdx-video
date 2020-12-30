@@ -2,21 +2,24 @@
 
 ![GitHub Workflow Status (master)](https://img.shields.io/github/workflow/status/libgdx/gdx-video/Java%20CI%20with%20Gradle/master?label=master)
 
+[![Sonatype Nexus (Releases)](https://img.shields.io/nexus/r/com.badlogicgames.gdx-video/gdx-video?nexusVersion=2&server=https%3A%2F%2Foss.sonatype.org&label=release)](https://search.maven.org/artifact/com.badlogicgames.gdx-video/gdx-video)
+[![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/com.badlogicgames.gdx-video/gdx-video?server=https%3A%2F%2Foss.sonatype.org&label=snapshot)](https://oss.sonatype.org/#nexus-search;gav~com.badlogicgames.gdx-video~gdx-video~~~~kw,versionexpand)
+
 A libGDX cross platform video rendering extension
 
 ## Contents
-* [Getting Started] (#getting-started)
-  * [Maven Repositories] (#repositories)
-  * [Using with Gradle] (#gradle-dependency-declarations)
-  * [Using with Maven] (#maven-dependency-declarations)
-* [Issues] (#issues)
-* [Contributing] (#contributing)
-  * [Working from source] (#working-from-source)
-* [Licensing] (#licensing)
+* [Getting Started](#getting-started)
+  * [Maven Repositories](#repositories)
+  * [Using with Gradle](#gradle-dependency-declarations)
+  * [Using with Maven](#maven-dependency-declarations)
+* [Issues](#issues)
+* [Contributing](#contributing)
+  * [Working from source](#working-from-source)
+* [Licensing](#licensing)
 
 ## Getting Started
 
-Gdx-video is currently **NOT** available in maven with official builds and snapshot builds. You can find them at the following repositories:
+Gdx-video is currently available in maven with official builds and snapshot builds. You can find them at the following repositories:
 
 #### Repositories
 
@@ -26,30 +29,30 @@ Gdx-video is currently **NOT** available in maven with official builds and snaps
 #### Gradle dependency declarations
 ##### Core:
 ```groovy
-implementation "com.badlogicgames.gdxvideo:gdx-video:0.0.1"
+implementation "com.badlogicgames.gdx-video:gdx-video:0.0.1"
 ```
 ##### Desktop:
 ```groovy
-implementation "com.badlogicgames.gdxvideo:gdx-video-lwjgl:0.0.1"
-implementation "com.badlogicgames.gdxvideo:gdx-video-desktop:0.0.1"
+implementation "com.badlogicgames.gdx-video:gdx-video-lwjgl:0.0.1"
+implementation "com.badlogicgames.gdx-video:gdx-video-desktop:0.0.1"
 ```
 or
 ```groovy
-implementation "com.badlogicgames.gdxvideo:gdx-video-lwjgl3:0.0.1"
-implementation "com.badlogicgames.gdxvideo:gdx-video-desktop:0.0.1"
+implementation "com.badlogicgames.gdx-video:gdx-video-lwjgl3:0.0.1"
+implementation "com.badlogicgames.gdx-video:gdx-video-desktop:0.0.1"
 ```
 
 ##### Android:
 ```groovy
-implementation "com.badlogicgames.gdxvideo:gdx-video-android:0.0.1"
+implementation "com.badlogicgames.gdx-video:gdx-video-android:0.0.1"
 ```
 
 ##### Html:
 
 ```groovy
-implementation "com.badlogicgames.gdxvideo:gdx-video:0.0.1:sources"
-implementation "com.badlogicgames.gdxvideo:gdx-video-gwt:0.0.1"
-implementation "com.badlogicgames.gdxvideo:gdx-video-gwt:0.0.1:sources"
+implementation "com.badlogicgames.gdx-video:gdx-video:0.0.1:sources"
+implementation "com.badlogicgames.gdx-video:gdx-video-gwt:0.0.1"
+implementation "com.badlogicgames.gdx-video:gdx-video-gwt:0.0.1:sources"
 ```
 You also need to add the following file to your GdxDefinition.gwt.xml in your html project:
 `````xml
@@ -59,7 +62,7 @@ You also need to add the following file to your GdxDefinition.gwt.xml in your ht
 Core:
 ```xml
 <dependency>
-  <groupId>com.badlogicgames.gdxvideo</groupId>
+  <groupId>com.badlogicgames.gdx-video</groupId>
   <artifactId>gdx-video</artifactId>
   <version>0.0.1</version>
 </dependency>
@@ -67,12 +70,12 @@ Core:
 Desktop:
 ```xml
 <dependency>
-  <groupId>com.badlogicgames.gdxvideo</groupId>
+  <groupId>com.badlogicgames.gdx-video</groupId>
   <artifactId>gdx-video-lwjgl</artifactId>
   <version>0.0.1</version>
 </dependency>
 <dependency>
-  <groupId>com.badlogicgames.gdxvideo</groupId>
+  <groupId>com.badlogicgames.gdx-video</groupId>
   <artifactId>gdx-video-desktop</artifactId>
   <version>0.0.1</version>
 </dependency>
@@ -80,7 +83,7 @@ Desktop:
 Android:
 ```xml
 <dependency>
-  <groupId>com.badlogicgames.gdxvideo</groupId>
+  <groupId>com.badlogicgames.gdx-video</groupId>
   <artifactId>gdx-video-android</artifactId>
   <version>0.0.1</version>
 </dependency>
