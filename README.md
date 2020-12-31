@@ -27,6 +27,7 @@ Gdx-video is currently available in maven with official builds and snapshot buil
 * **Snapshots** For snapshot builds, use https://oss.sonatype.org/content/repositories/snapshots
 
 #### Gradle dependency declarations
+Don't forget to replace _0.0.1_ with the current version!
 ##### Core:
 ```groovy
 implementation "com.badlogicgames.gdx-video:gdx-video:0.0.1"
@@ -34,12 +35,10 @@ implementation "com.badlogicgames.gdx-video:gdx-video:0.0.1"
 ##### Desktop:
 ```groovy
 implementation "com.badlogicgames.gdx-video:gdx-video-lwjgl:0.0.1"
-implementation "com.badlogicgames.gdx-video:gdx-video-platform:0.0.1:natives-desktop"
 ```
 or
 ```groovy
 implementation "com.badlogicgames.gdx-video:gdx-video-lwjgl3:0.0.1"
-implementation "com.badlogicgames.gdx-video:gdx-video-platform:0.0.1:natives-desktop"
 ```
 
 ##### Android:
@@ -59,6 +58,8 @@ You also need to add the following file to your GdxDefinition.gwt.xml in your ht
 <inherits name="com.badlogic.gdx.video.gdx_video_gwt" />
 `````
 #### Maven
+Don't forget to replace _0.0.1_ with the current version!
+
 Core:
 ```xml
 <dependency>
@@ -74,11 +75,13 @@ Desktop:
   <artifactId>gdx-video-lwjgl</artifactId>
   <version>0.0.1</version>
 </dependency>
+```
+or
+```xml
 <dependency>
   <groupId>com.badlogicgames.gdx-video</groupId>
-  <artifactId>gdx-video-platform</artifactId>
+  <artifactId>gdx-video-lwjgl3</artifactId>
   <version>0.0.1</version>
-  <classifier>natives-desktop</classifier>
 </dependency>
 ```
 Android:
