@@ -14,15 +14,12 @@ sourceSets {
 }
 
 configurations {
-    excluded
-    compile.extendsFrom excluded
     custom
     compile.extendsFrom custom
 }
 
 dependencies {
     api project(":gdx-video-core")
-    excluded "com.badlogicgames.gdx:gdx-jnigen:$gdxVersion"
 }
 
 apply plugin: "com.badlogicgames.gdx.gdx-jnigen"
