@@ -41,6 +41,7 @@ android {
 repositories {
 	// needed for AAPT2, may be needed for other tools
 	google()
+	maven { url "https://plugins.gradle.org/m2/" }
 }
 
 configurations { natives }
