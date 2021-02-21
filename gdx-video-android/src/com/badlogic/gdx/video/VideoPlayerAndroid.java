@@ -207,7 +207,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 					shader.bind();
 
 					Gdx.gl.glActiveTexture(GL20.GL_TEXTURE0);
-					Gdx.gl.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
+					Gdx.gl.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, getTextureExternal());
 					shader.setUniformi("u_sampler0", 0);
 					renderer.begin(transform, GL20.GL_TRIANGLE_STRIP);
 					renderer.texCoord(0, 0);
@@ -220,7 +220,6 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 					renderer.vertex(1, 1, 0);
 					renderer.end();
 					fbo.end();
-					if (frame != null) frame.dispose();
 					frame = fbo.getColorBufferTexture();
 				}
 				return true;
@@ -293,7 +292,6 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		GLES20.glDeleteTextures(1, textures, 0);
 
 		if (fbo != null) fbo.dispose();
-		if (frame != null) frame.dispose();
 		shader.dispose();
 		renderer.dispose();
 	}
