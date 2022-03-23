@@ -61,7 +61,7 @@ public class GdxVideoTest extends ApplicationAdapter {
 			try {
 				videoPlayer.play(Gdx.files.internal("libGDX - It's Good For You!.webm"));
 			} catch (FileNotFoundException e) {
-				System.out.println("Oh no!");
+				Gdx.app.error("gdx-video", "Oh no!");
 			}
 		}
 
