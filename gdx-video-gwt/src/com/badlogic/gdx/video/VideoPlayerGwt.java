@@ -24,8 +24,6 @@ import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.utils.Null;
 import com.google.gwt.media.client.Video;
 
-import java.io.FileNotFoundException;
-
 public class VideoPlayerGwt implements VideoPlayer {
 	private FileHandle currentFile;
 	private final Video v = Video.createIfSupported();
