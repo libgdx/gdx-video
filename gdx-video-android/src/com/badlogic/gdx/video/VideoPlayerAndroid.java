@@ -48,7 +48,7 @@ import java.io.IOException;
 
 /** Android implementation of the VideoPlayer class.
  *
- * @author Rob Bogie <rob.bogie@codepoke.net> */
+ * @author Rob Bogie &lt;rob.bogie@codepoke.net&gt; */
 public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener {
 	//@off
 	String vertexShaderCode =
