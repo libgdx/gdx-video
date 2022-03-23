@@ -37,14 +37,14 @@ public class VideoPlayerGwt implements VideoPlayer {
 	}
 
 	@Override
-	public boolean play (FileHandle file) throws FileNotFoundException {
-		if (!file.exists()) throw new FileNotFoundException();
+	public boolean play (FileHandle file) {
 		currentFile = file;
 		if (v != null) {
 			v.setSrc(((GwtFileHandle)file).getAssetUrl());
 			v.play();
+			return true;
 		}
-		return true;
+		return false;
 	}
 
 	@Override
