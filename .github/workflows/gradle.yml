@@ -45,7 +45,7 @@ jobs:
 
   linux:
     needs: macos
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-18.04
     env:
       ORG_GRADLE_PROJECT_GITHUB_USERNAME: ""
       ORG_GRADLE_PROJECT_GITHUB_API_TOKEN: ""
