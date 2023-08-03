@@ -3,17 +3,17 @@ apply plugin: 'com.android.library'
 android {
     namespace = 'com.badlogicgames.gdx_video'
 
+    compileSdkVersion = project.compileSdk
+    buildToolsVersion = project.buildTools
+
     defaultConfig {
         aarMetadata {
             minCompileSdk = 31
         }
 
-        minSdkVersion minSdk
-        targetSdkVersion targetSdk
+        minSdkVersion project.minSdk
+        targetSdkVersion project.targetSdk
     }
-
-    compileSdkVersion = compileSdk
-    buildToolsVersion = buildTools
 
     sourceSets {
         main {

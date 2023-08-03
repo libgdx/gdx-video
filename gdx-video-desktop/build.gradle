@@ -89,7 +89,7 @@ tasks.register('buildFFmpegLinux64') {
         mkdir 'FFmpeg/build-linux64'
         project.exec {
             workingDir 'FFmpeg/build-linux64'
-            commandLine '../configure', '--enable-pic', '--enable-cross-compile', '--disable-symver', '--disable-doc', '--arch=x86_64', '--target-os=linux', '--enable-static', '--disable-shared', '--disable-everything', '--enable-protocol=file', '--enable-filter=aresample', '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-decoder=vorbis', '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-filter=deshake'
+            commandLine '../configure', '--enable-pic', '--disable-debug', '--enable-cross-compile', '--disable-symver', '--disable-doc', '--arch=x86_64', '--target-os=linux', '--enable-static', '--disable-shared', '--disable-everything', '--enable-protocol=file', '--enable-filter=aresample', '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-decoder=vorbis', '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-filter=deshake'
         }
         project.exec {
             workingDir 'FFmpeg/build-linux64'

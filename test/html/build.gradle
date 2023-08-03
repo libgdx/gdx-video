@@ -35,10 +35,11 @@ dependencies {
 	implementation "com.badlogicgames.gdx:gdx-backend-gwt:$gdxVersion:sources"
 
 }
-/*
-import org.akhikhl.gretty.AppBeforeIntegrationTestTask
+
+//import org.akhikhl.gretty.AppBeforeIntegrationTestTask
 import org.wisepersist.gradle.plugins.gwt.GwtSuperDev
 
+/*
 gretty.httpPort = 8080
 gretty.resourceBase = project.buildDir.path + "/gwt/draftOut"
 gretty.contextPath = "/"
@@ -66,7 +67,7 @@ task beforeRun(type: AppBeforeIntegrationTestTask, dependsOn: startHttpServer) {
 	integrationTestTask 'superDev'
 
 	interactive false
-}
+}*/
 
 task superDev(type: GwtSuperDev) {
 	doFirst {
@@ -108,4 +109,3 @@ sourceCompatibility = 8.0
 sourceSets.main.java.srcDirs = [ "src/main/java/" ]
 
 eclipse.project.name = appName + "-html"
-*/

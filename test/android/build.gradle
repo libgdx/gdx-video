@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
-	compileSdkVersion = 33
+	compileSdkVersion = project.compileSdk
 	ndkVersion "21.4.7075529"
 	sourceSets {
 		main {
@@ -37,8 +37,8 @@ android {
     }
     defaultConfig {
 		applicationId 'com.badlogic.gdx.video.test'
-		minSdkVersion 19
-		targetSdkVersion 33
+		minSdkVersion project.minSdk
+		targetSdkVersion project.targetSdk
 		versionCode 1
 		versionName "1.0"
 	}
