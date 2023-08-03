@@ -1,51 +1,53 @@
-apply plugin: 'maven'
+apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
-uploadArchives {
-    repositories {
-        mavenDeployer {
-            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+publishing {
+    publications {
+        aar(MavenPublication) {
+            groupId = 'com.badlogicgames.gdx-video'
+            artifactId = 'gdx-video-android'
 
-            if (isLocalBuild()) {
-                repository(url: getLocalRepositoryUrl())
-            } else if (isReleaseBuild()) {
-                repository(url: getReleaseRepositoryUrl()) {
-                    authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
-                }
-            } else {
-                snapshotRepository(url: getSnapshotRepositoryUrl()) {
-                    authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
-                }
-            }
-
-
-            pom.project {
-                name rootProject.name
-                description 'Video Extension for libGDX'
-                url 'https://github.com/libgdx/gdx-video'
+            pom {
+                name.set(rootProject.name)
+                description.set('Video Extension for libGDX')
+                url.set('https://github.com/libgdx/gdx-video')
 
                 scm {
-                    url 'scm:git@github.com:libgdx/gdx-video.git'
-                    connection 'scm:git@github.com:libgdx/gdx-video.git'
-                    developerConnection 'scm:git@github.com:libgdx/gdx-video.git'
+                    url.set('scm:git@github.com:libgdx/gdx-video.git')
+                    connection.set('scm:git@github.com:libgdx/gdx-video.git')
+                    developerConnection.set('scm:git@github.com:libgdx/gdx-video.git')
                 }
 
                 licenses {
                     license {
-                        name 'The Apache Software License, Version 2.0'
-                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                        distribution 'repo'
+                        name.set('The Apache Software License, Version 2.0')
+                        url.set('http://www.apache.org/licenses/LICENSE-2.0.txt')
+                        distribution.set('repo')
                     }
                 }
 
                 developers {
                     developer {
-                        id 'SimonIT'
-                        name 'Simon Bullik'
-                        email 'simonit.orig@gmail.com'
+                        id.set('SimonIT')
+                        name.set('Simon Bullik')
+                        email.set('simonit.orig@gmail.com')
                     }
                 }
             }
+
+            afterEvaluate {
+                from components.release
+            }
+        }
+    }
+}
+
+android {
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+            withJavadocJar()
         }
     }
 }

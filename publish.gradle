@@ -1,52 +1,42 @@
-apply plugin: 'maven'
+apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
-afterEvaluate { project ->
-    uploadArchives {
-        repositories {
-            mavenDeployer {
-                beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+afterEvaluate {
+    publishing {
+        publications {
+            maven(MavenPublication) {
+                groupId = 'com.badlogicgames.gdx-video'
+                artifactId = project.name
 
-                if (isLocalBuild()) {
-                    repository(url: getLocalRepositoryUrl())
-                } else if (isReleaseBuild()) {
-                    repository(url: getReleaseRepositoryUrl()) {
-                        authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
-                    }
-                } else {
-                    snapshotRepository(url: getSnapshotRepositoryUrl()) {
-                        authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
-                    }
-                }
-
-
-                pom.project {
-                    name rootProject.name
-                    description 'Video Extension for libGDX'
-                    url 'https://github.com/libgdx/gdx-video'
+                pom {
+                    name.set(rootProject.name)
+                    description.set('Video Extension for libGDX')
+                    url.set('https://github.com/libgdx/gdx-video')
 
                     scm {
-                        url 'scm:git@github.com:libgdx/gdx-video.git'
-                        connection 'scm:git@github.com:libgdx/gdx-video.git'
-                        developerConnection 'scm:git@github.com:libgdx/gdx-video.git'
+                        url.set('scm:git@github.com:libgdx/gdx-video.git')
+                        connection.set('scm:git@github.com:libgdx/gdx-video.git')
+                        developerConnection.set('scm:git@github.com:libgdx/gdx-video.git')
                     }
 
                     licenses {
                         license {
-                            name 'The Apache Software License, Version 2.0'
-                            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                            distribution 'repo'
+                            name.set('The Apache Software License, Version 2.0')
+                            url.set('http://www.apache.org/licenses/LICENSE-2.0.txt')
+                            distribution.set('repo')
                         }
                     }
 
                     developers {
                         developer {
-                            id 'SimonIT'
-                            name 'Simon Bullik'
-                            email 'simonit.orig@gmail.com'
+                            id.set('SimonIT')
+                            name.set('Simon Bullik')
+                            email.set('simonit.orig@gmail.com')
                         }
                     }
                 }
+
+                from components.java
             }
         }
     }
@@ -59,23 +49,27 @@ afterEvaluate { project ->
         sign configurations.archives
     }
 
-    task libraryJar(type: Jar, dependsOn: classes) {
+    tasks.register('libraryJar', Jar) {
+        dependsOn classes
         from sourceSets.main.output.classesDirs
         from configurations.custom.collect { it.isDirectory() ? it : zipTree(it) }
         classifier = 'library'
     }
 
-    task sourcesJar(type: Jar, dependsOn: classes) {
+    tasks.register('sourcesJar', Jar) {
+        dependsOn classes
         from sourceSets.main.allSource
         classifier = 'sources'
     }
 
-    task javadocJar(type: Jar, dependsOn: javadoc) {
+    tasks.register('javadocJar', Jar) {
+        dependsOn javadoc
         from javadoc.destinationDir
         classifier = 'javadoc'
     }
 
-    task nativesJar(type: Jar, dependsOn: classes) {
+    tasks.register('nativesJar', Jar) {
+        dependsOn classes
         from fileTree("libs").files
         classifier = 'natives'
     }
@@ -86,5 +80,4 @@ afterEvaluate { project ->
         archives sourcesJar
         archives javadocJar
     }
-
 }

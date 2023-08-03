@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
-	compileSdkVersion 30
+	compileSdkVersion = 33
 	ndkVersion "21.4.7075529"
 	sourceSets {
 		main {
@@ -14,25 +14,31 @@ android {
 			jniLibs.srcDirs = ['libs']
 		}
 	}
-	packagingOptions {
-		// Preventing from license violations (more or less):
-		pickFirst 'META-INF/LICENSE.txt'
-		pickFirst 'META-INF/LICENSE'
-		pickFirst 'META-INF/license.txt'
-		pickFirst 'META-INF/LGPL2.1'
-		pickFirst 'META-INF/NOTICE.txt'
-		pickFirst 'META-INF/NOTICE'
-		pickFirst 'META-INF/notice.txt'
-		// Excluding unnecessary meta-data:
-		exclude 'META-INF/robovm/ios/robovm.xml'
-		exclude 'META-INF/DEPENDENCIES.txt'
-		exclude 'META-INF/DEPENDENCIES'
-		exclude 'META-INF/dependencies.txt'
-	}
-	defaultConfig {
+    packagingOptions {
+        resources {
+			// Preventing from license violations (more or less):
+			pickFirsts += [
+				'META-INF/LICENSE.txt',
+				'META-INF/LICENSE',
+				'META-INF/license.txt',
+				'META-INF/LGPL2.1',
+				'META-INF/NOTICE.txt',
+				'META-INF/NOTICE',
+				'META-INF/notice.txt'
+			]
+			// Excluding unnecessary meta-data:
+			excludes += [
+				'META-INF/robovm/ios/robovm.xml',
+				'META-INF/DEPENDENCIES.txt',
+				'META-INF/DEPENDENCIES',
+				'META-INF/dependencies.txt'
+			]
+		}
+    }
+    defaultConfig {
 		applicationId 'com.badlogic.gdx.video.test'
 		minSdkVersion 19
-		targetSdkVersion 30
+		targetSdkVersion 33
 		versionCode 1
 		versionName "1.0"
 	}
