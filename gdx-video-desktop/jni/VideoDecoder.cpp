@@ -155,68 +155,47 @@ void VideoDecoder::loadContainer(VideoBufferInfo* bufferInfo) {
         throw std::runtime_error("Could not find stream info!");
     }
 
-    videoStreamIndex = -1;
-    audioStreamIndex = -1;
+    videoStreamIndex = av_find_best_stream(formatContext, AVMEDIA_TYPE_VIDEO, -1, -1, &videoCodec, 0);
+    audioStreamIndex = av_find_best_stream(formatContext, AVMEDIA_TYPE_AUDIO, -1, -1, &audioCodec, 0);
 
-    //Loop through the streams and see if there is a video stream.
-    for(int i = 0; i < formatContext->nb_streams; i++) {
-        if(formatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO && videoStreamIndex < 0) {
-            //Found videostream, save index
-            videoStreamIndex = i;
-        }
-        if(formatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO && audioStreamIndex < 0) {
-            //Found audiostream, save index
-            audioStreamIndex = i;
-        }
-        if(videoStreamIndex >= 0 && audioStreamIndex >= 0) {
-            break;
-        }
-    }
-
-    if(videoStreamIndex < 0) {
+    if(!videoCodec) {
         logError("[VideoPlayer::loadFile] Could not find video stream!\n");
         throw std::runtime_error("Could not find any video stream");
     } else {
         logDebug("[VideoPlayer::loadFile] video stream found [index=%d]\n", videoStreamIndex);
     }
 
-    if(audioStreamIndex < 0) {
+    if(!audioCodec) {
         logError("[VideoPlayer::loadFile] Could not find audio stream!\n");
     } else {
         logDebug("[VideoPlayer::loadFile] audio stream found [index=%d]\n", audioStreamIndex);
     }
 
-    //Initialize video decoder
-    videoCodecContext = formatContext->streams[videoStreamIndex]->codec;
-
-    videoCodec = avcodec_find_decoder(videoCodecContext->codec_id);
-    if(videoCodec == NULL) {
-        logError("[VideoPlayer::loadFile] Could not find a suitable video decoder!\n");
-        throw std::runtime_error("Could not find a suitable video decoder!");
-    }
-
-    AVRational streamTimeBase = formatContext->streams[videoStreamIndex]->time_base;
+    // Load timeBase
+    AVStream *videoStream = formatContext->streams[videoStreamIndex];
+    AVRational streamTimeBase = videoStream->time_base;
     timeBase = ((double)streamTimeBase.num / (double)streamTimeBase.den);
+
+    // Initialize video decoder
+    videoCodecContext = avcodec_alloc_context3(videoCodec);
+    avcodec_parameters_to_context(videoCodecContext, videoStream->codecpar);
 
     AVDictionary* codecOptions = NULL;
 
-    if(avcodec_open2(videoCodecContext, videoCodec, &codecOptions) < 0) {
+    if(avcodec_open2(videoCodecContext, videoCodec, NULL) < 0) {
         logError("[VideoPlayer::loadFile] Could not open video decoder!\n");
         throw std::runtime_error("Could not open video decoder!");
     }
 
-    //Initialize audio decoder
+    // Initialize audio decoder
     if(audioStreamIndex >= 0) {
-        audioCodecContext = formatContext->streams[audioStreamIndex]->codec;
+        audioCodecContext = avcodec_alloc_context3(audioCodec);
 
-        bufferInfo->audioChannels = audioCodecContext->channels;
+        AVStream *audioStream = formatContext->streams[audioStreamIndex];
+        avcodec_parameters_to_context(audioCodecContext, audioStream->codecpar);
+
+        bufferInfo->audioChannels = audioCodecContext->ch_layout.nb_channels;
         bufferInfo->audioSampleRate = audioCodecContext->sample_rate;
-
-        audioCodec = avcodec_find_decoder((audioCodecContext->codec_id));
-        if(audioCodec == NULL) {
-            logError("[VideoPlayer::loadFile] Could not find a suitable audio decoder!");
-            throw std::runtime_error("Could not find a suitable audio decoder!");
-        }
 
         if(avcodec_open2(audioCodecContext, audioCodec, &codecOptions) < 0) {
             logError("[VideoPlayer::loadFile] Could not open audio decoder!\n");
@@ -246,7 +225,7 @@ void VideoDecoder::loadContainer(VideoBufferInfo* bufferInfo) {
         secPerKbBlock = 1024.0 / 1 / (double)audioCodecContext->channels / (double)audioCodecContext->sample_rate;
     }
 
-    videoFrameSize = avpicture_get_size(PIX_FMT_RGB24, videoCodecContext->width, videoCodecContext->height);
+    videoFrameSize = avpicture_get_size(AV_PIX_FMT_RGB24, videoCodecContext->width, videoCodecContext->height);
     logDebug("[VideoPlayer::loadFile] buffer for single frame is of size: %d\n", videoFrameSize);
 
     videoBuffer = new u_int8_t[videoFrameSize * VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES];
@@ -255,14 +234,14 @@ void VideoDecoder::loadContainer(VideoBufferInfo* bufferInfo) {
                                 videoCodecContext->pix_fmt,
                                 videoCodecContext->width,
                                 videoCodecContext->height,
-                                PIX_FMT_RGB24,
+                                AV_PIX_FMT_RGB24,
                                 SWS_BILINEAR,
                                 NULL,
                                 NULL,
                                 NULL);
 
     for(int i = 0; i < VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES; i++) {
-        avpicture_fill((AVPicture *)rgbFrames[i], videoBuffer + (i * videoFrameSize), PIX_FMT_RGB24, videoCodecContext->width, videoCodecContext->height);
+        avpicture_fill((AVPicture *)rgbFrames[i], videoBuffer + (i * videoFrameSize), AV_PIX_FMT_RGB24, videoCodecContext->width, videoCodecContext->height);
     }
     bufferInfo->videoBuffer = rgbFrames[0]->data[0];
     bufferInfo->videoBufferSize = videoFrameSize;

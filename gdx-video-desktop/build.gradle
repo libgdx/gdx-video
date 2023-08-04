@@ -24,140 +24,71 @@ dependencies {
 
 apply plugin: "com.badlogicgames.gdx.gdx-jnigen"
 
-tasks.register('cleanFFmpeg', Delete) {
-    delete 'FFmpeg/build-windows32', 'FFmpeg/build-windows64', 'FFmpeg/build-linux32', 'FFmpeg/build-linux64', 'FFmpeg/build-linuxarm32', 'FFmpeg/build-linuxarm64', 'FFmpeg/build-macos64', 'FFmpeg/build-macosarm64'
-    followSymlinks = true
+tasks.register('cleanFFmpeg')
+clean.configure {
+    dependsOn 'cleanFFmpeg'
 }
-clean.dependsOn cleanFFmpeg
 
 tasks.register('patchFFmpeg') {
     doFirst {
         println(System.getenv("PATH"))
-
-        //ant.patch(patchfile: "jni/ffmpeg.patch", originalFile: "FFmpeg/libavutil/mem.h")
     }
 }
 
-tasks.register('buildFFmpegWindows32') {
-    dependsOn patchFFmpeg
-    doFirst {
-        mkdir 'FFmpeg/build-windows32'
-        project.exec {
-            workingDir 'FFmpeg/build-windows32'
-            commandLine '../configure', '--enable-pic', '--enable-cross-compile', '--disable-symver', '--disable-doc', '--arch=x86', '--target-os=mingw32', '--cross-prefix=i686-w64-mingw32-', '--pkg-config=pkg-config', '--disable-shared', '--enable-static', '--disable-everything', '--enable-filter=deshake', '--enable-protocol=file', '--enable-filter=aresample', '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-decoder=vorbis', '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora'
-        }
-        project.exec {
-            workingDir 'FFmpeg/build-windows32'
-            commandLine 'make', '-j'
-        }
+void registerBuild(String buildName, String crossToolchain, String... extraArgs) {
+    String buildDir = "FFmpeg/build-${buildName.toLowerCase()}"
+    tasks.register("cleanFFmpeg$buildName", Delete) {
+        delete buildDir
     }
-    outputs.upToDateWhen { file('FFmpeg/build-windows32/libavformat/libavformat.a').exists() }
-}
-tasks.register('buildFFmpegWindows64') {
-    dependsOn patchFFmpeg
-    doFirst {
-        mkdir 'FFmpeg/build-windows64'
-        project.exec {
-            workingDir 'FFmpeg/build-windows64'
-            commandLine '../configure', '--enable-pic', '--enable-cross-compile', '--disable-symver', '--disable-doc', '--arch=x86_64', '--target-os=mingw32', '--cross-prefix=x86_64-w64-mingw32-', '--pkg-config=pkg-config', '--disable-shared', '--enable-static', '--disable-everything', '--enable-filter=deshake', '--enable-protocol=file', '--enable-filter=aresample', '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-decoder=vorbis', '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora'
-        }
-        project.exec {
-            workingDir 'FFmpeg/build-windows64'
-            commandLine 'make', '-j'
-        }
+    cleanFFmpeg.configure {
+        dependsOn "cleanFFmpeg$buildName"
     }
-    outputs.upToDateWhen { file('FFmpeg/build-windows64/libavformat/libavformat.a').exists() }
-}
-tasks.register('buildFFmpegLinux32') {
-    dependsOn patchFFmpeg
-    doFirst {
-        mkdir 'FFmpeg/build-linux32'
-        project.exec {
-            workingDir 'FFmpeg/build-linux32'
-            commandLine '../configure', '--enable-pic', '--enable-cross-compile', '--disable-symver', '--disable-doc', '--extra-cflags="-m32"', '--extra-cxxflags="-m32"', '--extra-ldflags="-m32"', '--arch=i686', '--target-os=linux', '--enable-static', '--disable-shared', '--disable-everything', '--enable-protocol=file', '--enable-filter=aresample', '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-decoder=vorbis', '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-filter=deshake'
+    tasks.register("buildFFmpeg$buildName") {
+        dependsOn patchFFmpeg
+        doFirst {
+            mkdir buildDir
+            String[] crossArgs = []
+            if(crossToolchain != null) {
+                def result = project.exec {
+                    ignoreExitValue = true
+                    commandLine "bash", "-l", "-c", "command", "-v", "$crossToolchain-gcc"
+                }
+                if(result.getExitValue() == 0) {
+                    crossArgs = ["--enable-cross-compile", "--cross-prefix=$crossToolchain-"]
+                }
+            }
+            project.exec {
+                workingDir buildDir
+                executable '../configure'
+                args '--enable-pic', '--disable-symver', '--disable-doc', '--disable-shared', '--enable-static', '--disable-everything'
+                args crossArgs
+                args '--enable-protocol=file', '--enable-filter=aresample', '--enable-filter=deshake'
+                args '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-demuxer=mov'
+                args '--enable-decoder=vorbis', '--enable-decoder=opus', '--enable-decoder=aac'
+                args '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-decoder=h264'
+                args extraArgs
+            }
+            project.exec {
+                workingDir buildDir
+                commandLine 'make', '-j'
+            }
         }
-        project.exec {
-            workingDir 'FFmpeg/build-linux32'
-            commandLine 'make', '-j'
-        }
+        outputs.upToDateWhen { file("$buildDir/libavformat/libavformat.a").exists() }
     }
-    outputs.upToDateWhen { file('FFmpeg/build-linux32/libavformat/libavformat.a').exists() }
 }
-tasks.register('buildFFmpegLinux64') {
-    dependsOn patchFFmpeg
-    doFirst {
-        mkdir 'FFmpeg/build-linux64'
-        project.exec {
-            workingDir 'FFmpeg/build-linux64'
-            commandLine '../configure', '--enable-pic', '--disable-debug', '--enable-cross-compile', '--disable-symver', '--disable-doc', '--arch=x86_64', '--target-os=linux', '--enable-static', '--disable-shared', '--disable-everything', '--enable-protocol=file', '--enable-filter=aresample', '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-decoder=vorbis', '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-filter=deshake'
-        }
-        project.exec {
-            workingDir 'FFmpeg/build-linux64'
-            commandLine 'make', '-j'
-        }
-    }
-    outputs.upToDateWhen { file('FFmpeg/build-linux64/libavformat/libavformat.a').exists() }
-}
-tasks.register('buildFFmpegLinuxARM32') {
-    dependsOn patchFFmpeg
-    doFirst {
-        mkdir 'FFmpeg/build-linuxarm32'
-        project.exec {
-            workingDir 'FFmpeg/build-linuxarm32'
-            commandLine '../configure', '--enable-pic', '--enable-cross-compile', '--disable-symver', '--disable-doc', '--arch=arm', '--target-os=linux', '--cross-prefix=arm-linux-gnueabihf-', '--enable-static', '--disable-shared', '--disable-everything', '--enable-protocol=file', '--enable-filter=aresample', '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-decoder=vorbis', '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-filter=deshake'
-        }
-        project.exec {
-            workingDir 'FFmpeg/build-linuxarm32'
-            commandLine 'make', '-j'
-        }
-    }
-    outputs.upToDateWhen { file('FFmpeg/build-linuxarm32/libavformat/libavformat.a').exists() }
-}
-tasks.register('buildFFmpegLinuxARM64') {
-    dependsOn patchFFmpeg
-    doFirst {
-        mkdir 'FFmpeg/build-linuxarm64'
-        project.exec {
-            workingDir 'FFmpeg/build-linuxarm64'
-            commandLine '../configure', '--enable-pic', '--enable-cross-compile', '--disable-symver', '--disable-doc', '--arch=aarch64', '--target-os=linux', '--cross-prefix=aarch64-linux-gnu-', '--enable-static', '--disable-shared', '--disable-everything', '--enable-protocol=file', '--enable-filter=aresample', '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-decoder=vorbis', '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-filter=deshake'
-        }
-        project.exec {
-            workingDir 'FFmpeg/build-linuxarm64'
-            commandLine 'make', '-j'
-        }
-    }
-    outputs.upToDateWhen { file('FFmpeg/build-linuxarm64/libavformat/libavformat.a').exists() }
-}
-tasks.register('buildFFmpegMacos64') {
-    dependsOn patchFFmpeg
-    doFirst {
-        mkdir 'FFmpeg/build-macos64'
-        project.exec {
-            workingDir 'FFmpeg/build-macos64'
-            commandLine '../configure', '--enable-pic', '--disable-symver', '--disable-doc', '--arch=x86_64', '--pkg_config="pkg-config --static"', '--enable-static', '--disable-shared', '--disable-everything', '--enable-protocol=file', '--enable-filter=aresample', '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-decoder=vorbis', '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-filter=deshake'
-        }
-        project.exec {
-            workingDir 'FFmpeg/build-macos64'
-            commandLine 'make', '-j'
-        }
-    }
-    outputs.upToDateWhen { file('FFmpeg/build-macos64/libavformat/libavformat.a').exists() }
-}
-tasks.register('buildFFmpegMacosARM64') {
-    dependsOn patchFFmpeg
-    doFirst {
-        mkdir 'FFmpeg/build-macosarm64'
-        project.exec {
-            workingDir 'FFmpeg/build-macosarm64'
-            commandLine '../configure', '--enable-pic', '--enable-cross-compile', '--disable-symver', '--disable-doc', '--arch=arm64', '--target-os=darwin', '--pkg_config="pkg-config --static"', '--enable-static', '--disable-shared', '--disable-everything', '--enable-protocol=file', '--enable-filter=aresample', '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-decoder=vorbis', '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-filter=deshake'
-        }
-        project.exec {
-            workingDir 'FFmpeg/build-macosarm64'
-            commandLine 'make', '-j'
-        }
-    }
-    outputs.upToDateWhen { file('FFmpeg/build-macosarm64/libavformat/libavformat.a').exists() }
-}
+
+registerBuild 'Windows32', 'i686-w64-mingw32', '--arch=x86', '--target-os=mingw32'
+registerBuild 'Windows64', 'x86_64-w64-mingw32', '--arch=x86_64', '--target-os=mingw32'
+
+registerBuild 'Linux32', 'i686-linux-gnu', '--arch=i686', '--target-os=linux', '--extra-cflags="-m32"', '--extra-cxxflags="-m32"', '--extra-ldflags="-m32"'
+registerBuild 'Linux64', 'x86_64-linux-gnu', '--arch=x86_64', '--target-os=linux', '--disable-cuda', '--disable-cuvid', '--disable-asm'
+
+registerBuild 'LinuxARM32', 'arm-linux-gnueabihf', '--arch=arm', '--target-os=linux'
+registerBuild 'LinuxARM64', 'aarch64-linux-gnu', '--arch=aarch64', '--target-os=linux'
+
+registerBuild 'Macos64', null, '--enable-cross-compile', '--cc=clang', '--cxx=clang++', '--arch=x86_64', '--target-os=darwin', '--disable-asm'
+registerBuild 'MacosARM64', null,  '--cc=clang', '--cxx=clang++', '--arch=arm64', '--target-os=darwin'
+
 
 tasks.register('buildFFmpeg') {
     dependsOn buildFFmpegWindows32, buildFFmpegWindows64, buildFFmpegLinux32, buildFFmpegLinux64, buildFFmpegLinuxARM32, buildFFmpegLinuxARM64
@@ -195,10 +126,12 @@ jnigen {
     add(Linux, x32) {
         headerDirs += "../FFmpeg/build-linux32/"
         libraries += genLibs("linux32")
+        compilerPrefix = 'i686-linux-gnu-'
     }
     add(Linux, x64) {
         headerDirs += "../FFmpeg/build-linux64/"
         libraries += genLibs("linux64")
+        compilerPrefix = 'x86_64-linux-gnu-'
     }
     add(Linux, x32, ARM) {
         headerDirs += "../FFmpeg/build-linuxarm32/"
@@ -213,7 +146,7 @@ jnigen {
         libraries += genLibs("macos64") + " -liconv -lbz2 -lz "
     }
     add(MacOsX, x64, ARM) {
-        headerDirs += "../FFmpeg/build-macos64/"
+        headerDirs += "../FFmpeg/build-macosarm64/"
         libraries += genLibs("macosarm64") + " -liconv -lbz2 -lz "
     }
 }

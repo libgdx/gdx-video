@@ -134,8 +134,8 @@ private:
     AVCodecContext* videoCodecContext;
     SwrContext* swrContext;
     AVCodecContext* audioCodecContext;
-    AVCodec* videoCodec;
-    AVCodec* audioCodec;
+    const AVCodec* videoCodec;
+    const AVCodec* audioCodec;
     AVFrame* frame;
     AVFrame* audioFrame;
     struct SwsContext* swsContext;

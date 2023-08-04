@@ -104,5 +104,14 @@ To build from source, clone or download this repository, then open it in Android
 
 See `build.gradle` file for current version to use in your dependencies.
 
+## Cross-compilation on MacOS
+
+Install homebrew and the cross compilers via
+~~~
+brew install mingw-w64 nasm
+brew tap messense/macos-cross-toolchains
+brew install i686-unknown-linux-gnu x86_64-unknown-linux-gnu x86_64-unknown-linux-gnu arm-unknown-linux-gnueabihf aarch64-unknown-linux-gnu
+~~~
+
 ## Licensing
 The project is licensed under the Apache 2 License, meaning you can use it free of charge, without strings attached in commercial and non-commercial projects. We love to get (non-mandatory) credit in case you release a game or app using this project!
