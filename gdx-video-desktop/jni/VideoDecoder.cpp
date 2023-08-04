@@ -222,10 +222,10 @@ void VideoDecoder::loadContainer(VideoBufferInfo* bufferInfo) {
         swr_init(swrContext);
 
         //Calculate how much seconds a single kb block is (1024 bytes): blockSize / bytesPerSample / channels / sampleRate
-        secPerKbBlock = 1024.0 / 1 / (double)audioCodecContext->channels / (double)audioCodecContext->sample_rate;
+        secPerKbBlock = 1024.0 / 1 / (double)bufferInfo->channels / (double)audioCodecContext->sample_rate;
     }
 
-    videoFrameSize = avpicture_get_size(AV_PIX_FMT_RGB24, videoCodecContext->width, videoCodecContext->height);
+    videoFrameSize = av_image_get_buffer_size(AV_PIX_FMT_RGB24, videoCodecContext->width, videoCodecContext->height, 1);
     logDebug("[VideoPlayer::loadFile] buffer for single frame is of size: %d\n", videoFrameSize);
 
     videoBuffer = new u_int8_t[videoFrameSize * VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES];
@@ -241,7 +241,7 @@ void VideoDecoder::loadContainer(VideoBufferInfo* bufferInfo) {
                                 NULL);
 
     for(int i = 0; i < VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES; i++) {
-        avpicture_fill((AVPicture *)rgbFrames[i], videoBuffer + (i * videoFrameSize), AV_PIX_FMT_RGB24, videoCodecContext->width, videoCodecContext->height);
+        rgbFrames[i] = av_frame_alloc();
     }
     bufferInfo->videoBuffer = rgbFrames[0]->data[0];
     bufferInfo->videoBufferSize = videoFrameSize;

@@ -35,7 +35,35 @@ tasks.register('patchFFmpeg') {
     }
 }
 
+import com.badlogic.gdx.jnigen.BuildTarget;
+
+String checkCrossPrefix(String crossToolchain) {
+    if (crossToolchain == null) return
+    def result = project.exec {
+        ignoreExitValue = true
+        commandLine "bash", "-l", "-c", "command", "-v", "$crossToolchain-gcc"
+    }
+    if(result.getExitValue() == 0) {
+        return "$crossToolchain-"
+    }
+}
+
+String genLibs(String buildDir) {
+    String libs = "";
+    String absPath = file("FFmpeg/$buildDir").absolutePath
+    libs += " -L$absPath/libavcodec"
+    libs += " -L$absPath/libavformat"
+    libs += " -L$absPath/libavutil"
+    libs += " -L$absPath/libswscale"
+    libs += " -L$absPath/libswresample"
+    return libs
+}
+
 void registerBuild(String buildName, String crossToolchain, String... extraArgs) {
+    registerBuild(buildName, crossToolchain, extraArgs.toList()) {}
+}
+
+void registerBuild(String buildName, String crossToolchain, List<String> extraArgs, Action<BuildTarget> jniOptions) {
     String buildDir = "FFmpeg/build-${buildName.toLowerCase()}"
     tasks.register("cleanFFmpeg$buildName", Delete) {
         delete buildDir
@@ -48,14 +76,9 @@ void registerBuild(String buildName, String crossToolchain, String... extraArgs)
         doFirst {
             mkdir buildDir
             String[] crossArgs = []
-            if(crossToolchain != null) {
-                def result = project.exec {
-                    ignoreExitValue = true
-                    commandLine "bash", "-l", "-c", "command", "-v", "$crossToolchain-gcc"
-                }
-                if(result.getExitValue() == 0) {
-                    crossArgs = ["--enable-cross-compile", "--cross-prefix=$crossToolchain-"]
-                }
+            def crossPrefix = checkCrossPrefix(crossToolchain)
+            if(crossPrefix) {
+                crossArgs = ["--enable-cross-compile", "--cross-prefix=$crossPrefix"]
             }
             project.exec {
                 workingDir buildDir
@@ -63,9 +86,10 @@ void registerBuild(String buildName, String crossToolchain, String... extraArgs)
                 args '--enable-pic', '--disable-symver', '--disable-doc', '--disable-shared', '--enable-static', '--disable-everything'
                 args crossArgs
                 args '--enable-protocol=file', '--enable-filter=aresample', '--enable-filter=deshake'
-                args '--enable-demuxer=ogg', '--enable-demuxer=matroska', '--enable-demuxer=mov'
-                args '--enable-decoder=vorbis', '--enable-decoder=opus', '--enable-decoder=aac'
-                args '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-decoder=h264'
+                args '--enable-demuxer=ogg', '--enable-demuxer=matroska'
+                args '--enable-decoder=vorbis', '--enable-decoder=opus'
+                args '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-decoder=av1'
+                //args '--enable-demuxer=mov', '--enable-decoder=aac', '--enable-decoder=h264'
                 args extraArgs
             }
             project.exec {
@@ -75,33 +99,25 @@ void registerBuild(String buildName, String crossToolchain, String... extraArgs)
         }
         outputs.upToDateWhen { file("$buildDir/libavformat/libavformat.a").exists() }
     }
-}
-
-registerBuild 'Windows32', 'i686-w64-mingw32', '--arch=x86', '--target-os=mingw32'
-registerBuild 'Windows64', 'x86_64-w64-mingw32', '--arch=x86_64', '--target-os=mingw32'
-
-registerBuild 'Linux32', 'i686-linux-gnu', '--arch=i686', '--target-os=linux', '--extra-cflags="-m32"', '--extra-cxxflags="-m32"', '--extra-ldflags="-m32"'
-registerBuild 'Linux64', 'x86_64-linux-gnu', '--arch=x86_64', '--target-os=linux', '--disable-cuda', '--disable-cuvid', '--disable-asm'
-
-registerBuild 'LinuxARM32', 'arm-linux-gnueabihf', '--arch=arm', '--target-os=linux'
-registerBuild 'LinuxARM64', 'aarch64-linux-gnu', '--arch=aarch64', '--target-os=linux'
-
-registerBuild 'Macos64', null, '--enable-cross-compile', '--cc=clang', '--cxx=clang++', '--arch=x86_64', '--target-os=darwin', '--disable-asm'
-registerBuild 'MacosARM64', null,  '--cc=clang', '--cxx=clang++', '--arch=arm64', '--target-os=darwin'
-
-
-tasks.register('buildFFmpeg') {
-    dependsOn buildFFmpegWindows32, buildFFmpegWindows64, buildFFmpegLinux32, buildFFmpegLinux64, buildFFmpegLinuxARM32, buildFFmpegLinuxARM64
-}
-
-ext.genLibs = { build ->
-	String libs = "";
-	libs += " -L" + file("FFmpeg/build-"+build+"/libavcodec").absolutePath
-	libs += " -L" + file("FFmpeg/build-"+build+"/libavformat").absolutePath
-	libs += " -L" + file("FFmpeg/build-"+build+"/libavutil").absolutePath
-	libs += " -L" + file("FFmpeg/build-"+build+"/libswscale").absolutePath
-	libs += " -L" + file("FFmpeg/build-"+build+"/libswresample").absolutePath
-    return libs
+    jnigen {
+        def is64bit = buildName.endsWith("64")
+        def isArm = buildName.contains("ARM")
+        def osMap = [
+            W: Windows,
+            L: Linux,
+            M: MacOsX
+        ]
+        def targetOs = osMap.get(buildName.substring(0, 1))
+        add(targetOs, is64bit, isArm) {
+            headerDirs += "../$buildDir"
+            libraries += genLibs(buildDir)
+            def crossPrefix = checkCrossPrefix(crossToolchain)
+            if(crossPrefix) {
+                compilerPrefix = crossPrefix
+            }
+            jniOptions
+        }
+    }
 }
 
 jnigen {
@@ -113,42 +129,30 @@ jnigen {
         //Using `-lavcodec -lavformat` order on linux drops filesize by half but mingw wont compile???
         libraries += " -lavformat -lavcodec -lavutil -lswscale -lswresample -lpthread "
     }
-    add(Windows, x32) {
-        headerDirs += "../FFmpeg/build-windows32/"
-        cppFlags += " -DWIN32 "
-        libraries += genLibs("windows32")
-    }
-    add(Windows, x64) {
-        headerDirs += "../FFmpeg/build-windows64/"
-        cppFlags += " -DWIN32 "
-        libraries += genLibs("windows64")
-    }
-    add(Linux, x32) {
-        headerDirs += "../FFmpeg/build-linux32/"
-        libraries += genLibs("linux32")
-        compilerPrefix = 'i686-linux-gnu-'
-    }
-    add(Linux, x64) {
-        headerDirs += "../FFmpeg/build-linux64/"
-        libraries += genLibs("linux64")
-        compilerPrefix = 'x86_64-linux-gnu-'
-    }
-    add(Linux, x32, ARM) {
-        headerDirs += "../FFmpeg/build-linuxarm32/"
-        libraries += genLibs("linuxarm32")
-    }
-    add(Linux, x64, ARM) {
-        headerDirs += "../FFmpeg/build-linuxarm64/"
-        libraries += genLibs("linuxarm64")
-    }
-    add(MacOsX, x64) {
-        headerDirs += "../FFmpeg/build-macos64/"
-        libraries += genLibs("macos64") + " -liconv -lbz2 -lz "
-    }
-    add(MacOsX, x64, ARM) {
-        headerDirs += "../FFmpeg/build-macosarm64/"
-        libraries += genLibs("macosarm64") + " -liconv -lbz2 -lz "
-    }
+}
+
+registerBuild('Windows32', 'i686-w64-mingw32', ['--arch=x86', '--target-os=mingw32']) {
+    cppFlags += " -DWIN32 "
+}
+registerBuild('Windows64', 'x86_64-w64-mingw32', ['--arch=x86_64', '--target-os=mingw32']) {
+    cppFlags += " -DWIN32 "
+}
+
+registerBuild 'Linux32', 'i686-linux-gnu', '--arch=i686', '--target-os=linux', '--extra-cflags="-m32"', '--extra-cxxflags="-m32"', '--extra-ldflags="-m32"'
+registerBuild 'Linux64', 'x86_64-linux-gnu', '--arch=x86_64', '--target-os=linux', '--disable-cuda', '--disable-cuvid', '--disable-asm'
+
+registerBuild 'LinuxARM32', 'arm-linux-gnueabihf', '--arch=arm', '--target-os=linux'
+registerBuild 'LinuxARM64', 'aarch64-linux-gnu', '--arch=aarch64', '--target-os=linux'
+
+registerBuild('Macos64', null, ['--cc=clang', '--cxx=clang++', '--arch=x86_64', '--target-os=darwin', '--disable-asm']) {
+    libraries += " -liconv -lbz2 -lz "
+}
+registerBuild('MacosARM64', null, ['--cc=clang', '--cxx=clang++', '--arch=arm64', '--target-os=darwin']) {
+    libraries += " -liconv -lbz2 -lz "
+}
+
+tasks.register('buildFFmpeg') {
+    dependsOn buildFFmpegWindows32, buildFFmpegWindows64, buildFFmpegLinux32, buildFFmpegLinux64, buildFFmpegLinuxARM32, buildFFmpegLinuxARM64
 }
 
 jar {
