@@ -98,8 +98,8 @@ public class FfMpeg {
 	 */
 
 	 private native static void register ();/*
-		av_register_all();
-		logDebug("av_register_all() called\n");
+		//av_register_all();
+		logDebug("nothing to register\n");
 	 */
 
 	 /**

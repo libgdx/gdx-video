@@ -115,7 +115,7 @@ public:
     void *getCustomFileBufferFuncData() const;
     FillFileBufferFunc getFillFileBufferFunc() const;
 private:
-    int decodeAudio(void* audioBuffer);
+    int decodeAudio(void* audioBuffer, int buf_samples);
 
     bool readPacket();
 
@@ -148,7 +148,6 @@ private:
     FillFileBufferFunc fillFileBufferFunc;
     CleanupFunc cleanupFunc;
 
-    u_int8_t* videoBuffer;
     int videoFrameSize;
     double videoTimestamps[VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES];
     AVFrame* rgbFrames[VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES];
@@ -157,13 +156,13 @@ private:
     Mutex videoBufferMutex;
     CondVar videoBufferConditional;
     bool videoOutputEnded;
-    std::list<AVPacket> videoPackets;
+    std::list<AVPacket *> videoPackets;
 
     char audioBuffer[VIDEOPLAYER_AUDIO_BUFFER_SIZE];
     char audioDecodingBuffer[(MAX_AUDIO_FRAME_SIZE * 3) / 2];
     int audioDecodedSize;
     int audioDecodedUsed;
-    std::list<AVPacket> audioPackets;
+    std::list<AVPacket *> audioPackets;
     Mutex listMutex;
     int videoStreamIndex;
     int audioStreamIndex;
@@ -172,5 +171,4 @@ private:
     bool fileLoaded;
     double timeBase;
     double timestampOffset;
-    bool firstVideoPacket;
 };
