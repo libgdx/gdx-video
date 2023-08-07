@@ -86,7 +86,8 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 		decoder = new VideoDecoder();
 		VideoDecoderBuffers buffers;
 		try {
-			buffers = decoder.loadStream(this, "readFileContents");
+			buffers = decoder.loadFile(this, file.path());
+			//buffers = decoder.loadStream(this, "readFileContents");
 
 			if (buffers != null) {
 				ByteBuffer audioBuffer = buffers.getAudioBuffer();
@@ -161,14 +162,10 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 				}
 			}
 
-			showAlreadyDecodedFrame = false;
-			long currentFrameTimestamp = (long)(decoder.getCurrentFrameTimestamp() * 1000);
-			long currentVideoTime = (System.currentTimeMillis() - startTime);
-			int difference = (int)(currentFrameTimestamp - currentVideoTime);
-			if (difference > 20) {
-				// Difference is more than a frame, draw this one twice
-				showAlreadyDecodedFrame = true;
-			}
+			long currentFrameTimestamp = (long)(decoder.getCurrentFrameTimestamp() * 1000.0);
+			long currentVideoTime = System.currentTimeMillis() - startTime;
+			long millisecondsAhead = currentFrameTimestamp - currentVideoTime;
+			showAlreadyDecodedFrame = millisecondsAhead > 20;
 			return newFrame;
 		}
 		return false;
@@ -228,7 +225,11 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 			if (audio != null) {
 				audio.pause();
 			}
-			timeBeforePause = System.currentTimeMillis() - startTime;
+			if(startTime != 0L) {
+				timeBeforePause = System.currentTimeMillis() - startTime;
+			} else {
+				timeBeforePause = 0L;
+			}
 		}
 	}
 

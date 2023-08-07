@@ -67,8 +67,9 @@ void registerBuild(String buildName, String crossToolchain, String... extraArgs)
             project.exec {
                 workingDir buildDir
                 executable '../configure'
-                args '--enable-pic', '--disable-symver', '--disable-doc', '--disable-shared', '--enable-static', '--disable-everything'
+                args '--enable-pic', '--disable-symver', '--disable-doc', '--disable-shared', '--enable-static'
                 args crossArgs
+                args '--disable-everything'
                 args '--enable-protocol=file', '--enable-filter=aresample', '--enable-filter=deshake'
                 args '--enable-demuxer=ogg', '--enable-demuxer=matroska'
                 args '--enable-decoder=vorbis', '--enable-decoder=opus'

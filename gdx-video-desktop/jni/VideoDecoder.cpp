@@ -30,9 +30,10 @@ static int readFunction(void* opaque, uint8_t* buffer, int bufferSize)
     return decoder->getFillFileBufferFunc()(decoder->getCustomFileBufferFuncData(), buffer, bufferSize);
 }
 
-VideoDecoder::VideoDecoder() : videoBufferMutex(true), videoBufferConditional(videoBufferMutex), listMutex(true){
+VideoDecoder::VideoDecoder() : decodeCondvar(decodeMutex), displayCondvar(displayMutex) {
     fileLoaded = false;
     videoOutputEnded = false;
+    audioOutputEnded = false;
 
     formatContext = NULL;
     videoCodecContext = NULL;
@@ -43,34 +44,40 @@ VideoDecoder::VideoDecoder() : videoBufferMutex(true), videoBufferConditional(vi
     videoCodec = NULL;
     audioCodec = NULL;
     swsContext = NULL;
+    swrContext = NULL;
+
+    timeout = (struct timespec) { .tv_sec = 0, .tv_nsec = 1000000 };
     frame = av_frame_alloc();
     for(int i = 0; i < VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES; i++) {
         rgbFrames[i] = av_frame_alloc();
+        rgbFrames[i]->pts = 0;
     }
     audioFrame = av_frame_alloc();
+    audioDecodingBuffer = NULL;
     audioDecodedSize = 0;
     audioDecodedUsed = 0;
+    currentFrameDisplayed = 0;
+    totalFramesBuffered = 0;
 
-    videoCurrentBufferIndex = 0;
-    videoNumFrameBuffered = 0;
     timestampOffset = -1;
 }
 
 VideoDecoder::~VideoDecoder() {
     //Take care of cleanup
-    if(swrContext !=  NULL) {
+    if(swrContext != NULL) {
         swr_free(&swrContext);
     }
 
     if(swsContext != NULL) {
         sws_freeContext(swsContext);
+        swsContext = NULL;
     }
 
     if(audioCodecContext != NULL) {
-        avcodec_close(audioCodecContext);
+        avcodec_free_context(&audioCodecContext);
     }
     if(videoCodecContext != NULL) {
-        avcodec_close(videoCodecContext);
+        avcodec_free_context(&videoCodecContext);
     }
 
     av_frame_free(&audioFrame);
@@ -79,9 +86,10 @@ VideoDecoder::~VideoDecoder() {
     }
     av_frame_free(&frame);
     avformat_close_input(&formatContext);
+    av_freep(&audioDecodingBuffer);
 
     if(avioContext != NULL) {
-        av_free(avioContext);
+        av_freep(&avioContext);
     }
 }
 
@@ -93,11 +101,6 @@ void VideoDecoder::loadFile(char* filename, VideoBufferInfo *bufferInfo) {
     if(filename == NULL || strcmp(filename, "")==0) {
         logError("[VideoPlayer::loadFile] Invalid arguments supplied!\n");
         throw std::invalid_argument("Filename should not be empty!");
-    }
-
-    if(debugLoggingActive) {
-        //Print all available information about the streams inside of the file.
-        av_dump_format(formatContext, 0, filename, 0);
     }
 
     //Try to open the file
@@ -142,6 +145,11 @@ void VideoDecoder::loadFile(FillFileBufferFunc func, void* funcData, CleanupFunc
 }
 
 void VideoDecoder::loadContainer(VideoBufferInfo* bufferInfo) {
+    if(debugLoggingActive) {
+        //Print all available information about the streams inside of the file.
+        av_dump_format(formatContext, 0, "<input>", 0);
+    }
+
     if (avformat_find_stream_info(formatContext, NULL) < 0) {
         logError("[VideoPlayer::loadFile] Could not find stream info!\n");
         throw std::runtime_error("Could not find stream info!");
@@ -172,8 +180,6 @@ void VideoDecoder::loadContainer(VideoBufferInfo* bufferInfo) {
     videoCodecContext = avcodec_alloc_context3(videoCodec);
     avcodec_parameters_to_context(videoCodecContext, videoStream->codecpar);
 
-    AVDictionary* codecOptions = NULL;
-
     if(avcodec_open2(videoCodecContext, videoCodec, NULL) < 0) {
         logError("[VideoPlayer::loadFile] Could not open video decoder!\n");
         throw std::runtime_error("Could not open video decoder!");
@@ -189,28 +195,25 @@ void VideoDecoder::loadContainer(VideoBufferInfo* bufferInfo) {
         bufferInfo->audioChannels = audioCodecContext->ch_layout.nb_channels;
         bufferInfo->audioSampleRate = audioCodecContext->sample_rate;
 
-        if(avcodec_open2(audioCodecContext, audioCodec, &codecOptions) < 0) {
+        if(avcodec_open2(audioCodecContext, audioCodec, NULL) < 0) {
             logError("[VideoPlayer::loadFile] Could not open audio decoder!\n");
             throw std::runtime_error("Could not open audio decoder!");
         }
         bufferInfo->audioBuffer = this->audioBuffer;
         bufferInfo->audioBufferSize = VIDEOPLAYER_AUDIO_BUFFER_SIZE;
 
-        int channelLayout = 0;
-        switch(bufferInfo->audioChannels) {
-        case 1:
-            channelLayout = AV_CH_LAYOUT_MONO;
-            break;
-        case 2:
-            channelLayout = AV_CH_LAYOUT_STEREO;
-            break;
-        default:
-            logError("[VideoPlayer::loadFile] InputFile has unsupported number of audiochannels!");
-            throw std::runtime_error("InputFile has unsupported number of audiochannels!");
-        }
+        // Setup conversion context, which will convert our audio to the right output format
+        AVChannelLayout avch = AV_CHANNEL_LAYOUT_STEREO;
+        av_channel_layout_copy(&audioChannelLayout, &avch);
+        audioSampleFormat = AV_SAMPLE_FMT_S16;
 
-        //Setup conversion context, which will convert our audio to the right output format
-        swrContext = swr_alloc_set_opts(NULL, AV_CH_LAYOUT_STEREO, AV_SAMPLE_FMT_S16, bufferInfo->audioSampleRate, channelLayout, AV_SAMPLE_FMT_FLTP, bufferInfo->audioSampleRate, 0, NULL);
+        logDebug("[VideoPlayer::loadFile] Loading audio resampler ...\n");
+        swr_alloc_set_opts2(
+            &swrContext,
+            /* out */ &avch, audioSampleFormat, bufferInfo->audioSampleRate,
+            /*  in */ &audioCodecContext->ch_layout, audioCodecContext->sample_fmt, bufferInfo->audioSampleRate,
+            0, NULL
+        );
         swr_init(swrContext);
 
         //Calculate how much seconds a single kb block is (1024 bytes): blockSize / bytesPerSample / channels / sampleRate
@@ -219,6 +222,8 @@ void VideoDecoder::loadContainer(VideoBufferInfo* bufferInfo) {
 
     int width = videoCodecContext->width;
     int height = videoCodecContext->height;
+
+    logDebug("[VideoPlayer::loadFile] Loading video scaler ...\n");
 
     swsContext = sws_getContext(
         width, height, videoCodecContext->pix_fmt, // src
@@ -243,36 +248,34 @@ void VideoDecoder::loadContainer(VideoBufferInfo* bufferInfo) {
 
     fileLoaded = true;
 
-    //start filling up the buffer (Start seperate thread)
+    logDebug("[VideoPlayer::loadFile] Starting decoding thread ...\n");
+
     this->start();
-    videoBufferMutex.lock();
-    while(videoNumFrameBuffered < (VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES - 1)) {
-        videoBufferConditional.wait();
-        logDebug("[VideoPlayer::loadFile] Waiting for buffer to fill: %d\n", videoNumFrameBuffered);
-    }
-    videoBufferMutex.unlock();
+}
+
+int VideoDecoder::getReadIndex() {
+    return currentFrameDisplayed % VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES;
+}
+
+int VideoDecoder::getWriteIndex() {
+    return (totalFramesBuffered + 1) % VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES;
+}
+
+int VideoDecoder::getNumBuffered() {
+    __sync_synchronize();
+    return totalFramesBuffered - currentFrameDisplayed;
 }
 
 u_int8_t* VideoDecoder::nextVideoFrame() {
-    videoBufferMutex.lock();
-
-    if(videoNumFrameBuffered < 1 && !videoOutputEnded) {
+    if(videoOutputEnded) return NULL;
+    if(!hasFrameBuffered()) {
         logDebug("[VideoPlayer::nextVideoFrame] no new frame available yet!\n");
-        return rgbFrames[videoCurrentBufferIndex]->data[0];
+    } else {
+        __sync_add_and_fetch(&currentFrameDisplayed, 1);
+        decodeCondvar.signal();
     }
 
-    if(!videoOutputEnded) {
-        int readingIndex = videoCurrentBufferIndex;
-        logDebug("[VideoPlayer::nextVideoFrame] last returned buffer points to index %d\n", readingIndex);
-        videoCurrentBufferIndex = (readingIndex + 1) % VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES;
-        videoNumFrameBuffered--;
-        videoBufferConditional.signal();
-        videoBufferMutex.unlock();
-        return rgbFrames[readingIndex]->data[0];
-    }
-
-    videoBufferMutex.unlock();
-    return NULL;
+    return rgbFrames[getReadIndex()]->data[0];
 }
 
 void VideoDecoder::updateAudioBuffer() {
@@ -284,12 +287,16 @@ void VideoDecoder::updateAudioBuffer() {
         if(audioDecodedUsed >= audioDecodedSize) {
             audioDecodedUsed = 0;
 
-            // FIXME: audioBuffer should be created with av_samples_alloc
-            int buf_samples = VIDEOPLAYER_AUDIO_BUFFER_SIZE / 5;
+            int buf_samples = 64000; // enough, hopefully
+            if(audioDecodingBuffer == NULL) {
+                av_samples_alloc(
+                    &audioDecodingBuffer, NULL,
+                    audioChannelLayout.nb_channels, buf_samples, audioSampleFormat,
+                    1
+                );
+            }
             int size = decodeAudio(audioDecodingBuffer, buf_samples);
-            if(size < 0) {
-                logDebug("[VideoPlayer::updateAudioBuffer] Could not decode more frames!\n");
-
+            if(size <= 0) {
                 //Play silence
                 audioDecodedSize = 1024;
                 memset(audioDecodingBuffer, 0, audioDecodedSize);
@@ -314,39 +321,35 @@ void VideoDecoder::updateAudioBuffer() {
     }
 }
 
-int VideoDecoder::decodeAudio(void* audioBuffer, int buf_samples) {
-    while(true) {
-        listMutex.lock();
+int VideoDecoder::decodeAudio(void* decodingBuffer, int buf_samples) {
+    while(!audioOutputEnded) {
         int ret = avcodec_receive_frame(audioCodecContext, audioFrame);
         if(ret == AVERROR(EAGAIN)) {
             // Get a new packet and send to decoder
-            while(audioPackets.empty() && readPacket());
-
+            bool check = true;
             AVPacket * audioPacket = NULL;
-            if(!audioPackets.empty()) {
-                audioPacket = audioPackets.back();
-                audioPackets.pop_back();
+
+            while(!audioPacket && check) {
+                packetMutex.lock();
+                if(audioPackets.empty()) {
+                    check = readPacket();
+                } else {
+                    audioPacket = audioPackets.back();
+                    audioPackets.pop_back();
+                }
+                packetMutex.unlock();
             }
+
             avcodec_send_packet(audioCodecContext, audioPacket);
             av_packet_free(&audioPacket);
             continue;
         }
         if(ret != 0) {
             // Either decoding error or EOF
-            listMutex.unlock();
-            return 0;
+            logDebug("[VideoDecoder::run] Finished decoding the audio stream.\n");
+            audioOutputEnded = true;
+            continue;
         }
-
-        if(audioPackets.empty()) {
-            //Keep reading packets until no more can be read, or an audio packet is found.
-            while(audioPackets.empty() && readPacket());
-            if(audioPackets.empty()) {
-                listMutex.unlock();
-                return -1;
-            }
-        }
-
-        listMutex.unlock();
 
         // got frame
         int max_samples = swr_get_out_samples(swrContext, audioFrame->nb_samples);
@@ -354,103 +357,94 @@ int VideoDecoder::decodeAudio(void* audioBuffer, int buf_samples) {
         if(max_samples > 0) {
             out_samples = swr_convert(
                 swrContext,
-                (u_int8_t**)&audioBuffer, buf_samples,
+                (u_int8_t**)&decodingBuffer, buf_samples,
                 (uint8_t const **)audioFrame->extended_data, audioFrame->nb_samples // in
             );
         }
 
-        int size = av_samples_get_buffer_size(NULL, 2, out_samples, AV_SAMPLE_FMT_S16, 0);
+        int size = av_samples_get_buffer_size(
+            NULL, audioChannelLayout.nb_channels, out_samples, audioSampleFormat,
+            1
+        );
 
         //Return copied size
         return size;
     }
+    return 0;
 }
 
 double VideoDecoder::getCurrentFrameTimestamp() {
-    //Since the nextVideoFrame function already upped the variable, undo the effect (ugly, but effective, may be refactored later).
-    int index = videoCurrentBufferIndex - 1;
-    if(index < 0) {
-        index = VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES - 1;
-    }
-    logDebug("[VideoPlayer::nextVideoFrame] last returned timestamp is of index %d\n", index);
-    return videoTimestamps[index];// + ((timestampOffset) > 0 ? timestampOffset : 0);
+    return rgbFrames[getReadIndex()]->pts * timeBase;
 }
 
 bool VideoDecoder::readPacket() {
     AVPacket *packet = av_packet_alloc();
     if(av_read_frame(formatContext, packet) >= 0) {
         if(packet->stream_index==videoStreamIndex) {
-            //queue video packet for handling later
-            videoBufferMutex.lock();
             videoPackets.push_front(packet);
-            videoBufferMutex.unlock();
         } else if(packet->stream_index == audioStreamIndex) {
-            //queue audio packet for handling later
-            listMutex.lock();
             audioPackets.push_front(packet);
-            listMutex.unlock();
         } else {
             av_packet_free(&packet);
         }
         return true;
     } else {
+        logDebug("[VideoDecoder::readPacket] No more packets available.\n");
         return false;
     }
 }
 
 void VideoDecoder::run() {
-    videoBufferMutex.lock();
+    decodeMutex.lock();
     while(!videoOutputEnded) {
-        while(videoNumFrameBuffered < (VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES - 1) && !videoOutputEnded) {
+        while(!isBuffered() && !videoOutputEnded) {
             int ret = avcodec_receive_frame(videoCodecContext, frame);
             if(ret == AVERROR(EAGAIN)) {
                 // Get a new packet and send to decoder
-                while(videoPackets.empty() && readPacket());
-
+                bool check = true;
                 AVPacket * videoPacket = NULL;
-                if(!videoPackets.empty()) {
-                    videoPacket = videoPackets.back();
-                    videoPackets.pop_back();
+
+                while(!videoPacket && check) {
+                    packetMutex.lock();
+                    if(videoPackets.empty()) {
+                        check = readPacket();
+                    } else {
+                        videoPacket = videoPackets.back();
+                        videoPackets.pop_back();
+                    }
+                    packetMutex.unlock();
                 }
+
                 avcodec_send_packet(videoCodecContext, videoPacket);
                 av_packet_free(&videoPacket);
                 continue;
             }
             if(ret != 0) {
                 // Either decoding error or EOF
+                logDebug("[VideoDecoder::run] Finished decoding the video stream.\n");
                 videoOutputEnded = true;
                 break;
             }
 
-            videoBufferMutex.unlock();
-
             // Got a new frame, so scale it into an RGB frame
-            int indexToWrite = (videoCurrentBufferIndex + videoNumFrameBuffered) % VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES;
-
-            AVFrame * dst = rgbFrames[indexToWrite];
+            AVFrame * dst = rgbFrames[getWriteIndex()];
             sws_scale(
                 swsContext,
                 (uint8_t const * const *)frame->data, frame->linesize, 0, videoCodecContext->height,
                 dst->data, dst->linesize
             );
+            dst->pts = frame->pts;
 
-            videoTimestamps[indexToWrite] = (double)frame->pts * timeBase;
+            //Atomic increment of totalFramesBuffered
+            __sync_add_and_fetch(&totalFramesBuffered, 1);
 
-            //Atomic increment of videoNumFrameBuffered
-            __sync_add_and_fetch(&videoNumFrameBuffered, 1);
-
-            if(videoBufferMutex.trylock() == 0) {
-                // Send signal that new frames are available
-                videoBufferConditional.signal();
-                videoBufferMutex.unlock();
-            }
-
-            videoBufferMutex.lock();
+            // Send signal that new frames are available
+            displayCondvar.signal();
         }
         // Wait for signal that new frames are requested
-        videoBufferConditional.wait();
+        decodeCondvar.wait();
     }
-    videoBufferMutex.unlock();
+    decodeMutex.unlock();
 
     if(cleanupFunc != NULL) {
         cleanupFunc(this->customFileBufferFuncData);
@@ -462,10 +456,13 @@ int VideoDecoder::getVideoFrameSize()
     return videoFrameSize;
 }
 
-bool VideoDecoder::isBuffered() {
-    return videoNumFrameBuffered == (VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES - 1);
+bool VideoDecoder::hasFrameBuffered() {
+    return getNumBuffered() >= 1;
 }
 
+bool VideoDecoder::isBuffered() {
+    return getNumBuffered() == (VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES - 1) || (videoOutputEnded && hasFrameBuffered());
+}
 
 FillFileBufferFunc VideoDecoder::getFillFileBufferFunc() const
 {

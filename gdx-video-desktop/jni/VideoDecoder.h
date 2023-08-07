@@ -37,9 +37,8 @@ extern "C"
 
 //Should always be bigger then 1! If not, the buffer will never be filled, because the buffer will never be completely full.
 //It will always have 1 single empty element, which is used as protection for faster synchronization.
-#define VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES 10
+#define VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES 4
 #define VIDEOPLAYER_AUDIO_BUFFER_SIZE 1024
-#define MAX_AUDIO_FRAME_SIZE 192000
 #define CUSTOMIO_BUFFER_SIZE 4096
 
 struct VideoBufferInfo {
@@ -112,10 +111,15 @@ public:
      * @return Whether the framebuffer is full.
      */
     bool isBuffered();
+    bool hasFrameBuffered();
     void *getCustomFileBufferFuncData() const;
     FillFileBufferFunc getFillFileBufferFunc() const;
 private:
     int decodeAudio(void* audioBuffer, int buf_samples);
+
+    AVChannelLayout audioChannelLayout;
+    AVSampleFormat audioSampleFormat;
+    struct timespec timeout;
 
     bool readPacket();
 
@@ -130,16 +134,26 @@ private:
      */
     void loadContainer(VideoBufferInfo* bufferInfo);
 private:
-    AVFormatContext* formatContext;
-    AVCodecContext* videoCodecContext;
-    SwrContext* swrContext;
-    AVCodecContext* audioCodecContext;
-    const AVCodec* videoCodec;
-    const AVCodec* audioCodec;
-    AVFrame* frame;
-    AVFrame* audioFrame;
-    struct SwsContext* swsContext;
+    // File I/O
     AVIOContext* avioContext;
+    // Parsing
+    AVFormatContext* formatContext;
+
+    // Video decoding
+    AVCodecContext* videoCodecContext;
+    int videoStreamIndex;
+    const AVCodec* videoCodec;
+    AVFrame* frame;
+    // Video scaling / reformatting to RGB
+    struct SwsContext* swsContext;
+
+    // Audio decoding
+    AVCodecContext* audioCodecContext;
+    int audioStreamIndex;
+    const AVCodec* audioCodec;
+    AVFrame* audioFrame;
+    // Audio resampling
+    SwrContext* swrContext;
 
     //Owned by ffmpeg, don't clean
     u_int8_t* avioBuffer;
@@ -148,24 +162,38 @@ private:
     FillFileBufferFunc fillFileBufferFunc;
     CleanupFunc cleanupFunc;
 
+    /// Size of an RGB video frame buffer, in bytes
     int videoFrameSize;
-    double videoTimestamps[VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES];
+
+    /// RGB Frame ring buffer
     AVFrame* rgbFrames[VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES];
-    int videoCurrentBufferIndex;
-    int videoNumFrameBuffered;
-    Mutex videoBufferMutex;
-    CondVar videoBufferConditional;
+
+    /// currently displayed frame = tail of ring buffer
+    int currentFrameDisplayed;
+    int getReadIndex();
+    /// total number of buffered frames = head of ring buffer
+    int totalFramesBuffered;
+    int getWriteIndex();
+    /// number of frames currently buffered ahead
+    int getNumBuffered();
+
+    // decode mutex and condvar, signaled when new frames are requested
+    Mutex decodeMutex;
+    CondVar decodeCondvar;
+    // display mutex and condvar, signaled when new frames are available
+    Mutex displayMutex;
+    CondVar displayCondvar;
+
     bool videoOutputEnded;
     std::list<AVPacket *> videoPackets;
 
     char audioBuffer[VIDEOPLAYER_AUDIO_BUFFER_SIZE];
-    char audioDecodingBuffer[(MAX_AUDIO_FRAME_SIZE * 3) / 2];
+    uint8_t * audioDecodingBuffer;
     int audioDecodedSize;
     int audioDecodedUsed;
+    bool audioOutputEnded;
     std::list<AVPacket *> audioPackets;
-    Mutex listMutex;
-    int videoStreamIndex;
-    int audioStreamIndex;
+    Mutex packetMutex;
     double secPerKbBlock;
 
     bool fileLoaded;

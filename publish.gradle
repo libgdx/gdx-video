@@ -6,7 +6,7 @@ afterEvaluate {
         publications {
             maven(MavenPublication) {
                 groupId = 'com.badlogicgames.gdx-video'
-                artifactId = project.name
+                artifactId = archivesBaseName ?: project.name
 
                 pom {
                     name.set(rootProject.name)

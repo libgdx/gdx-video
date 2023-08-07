@@ -230,6 +230,48 @@ public class VideoDecoder implements Disposable {
 		return 0;
 						 */
 
+	public native VideoDecoderBuffers loadFile (Object decodingObject, String fileName)
+			throws IllegalArgumentException, Exception;/*
+		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
+		try {
+			VideoBufferInfo bufferInfo;
+            memset(&bufferInfo, 0, sizeof(VideoBufferInfo));
+
+            pointer->loadFile(fileName, &bufferInfo);
+            jobject videoBuffer = NULL;
+            jobject audioBuffer = NULL;
+            jobject customIOBuffer = NULL;
+            if(bufferInfo.videoBuffer != NULL && bufferInfo.videoBufferSize > 0) {
+                videoBuffer = env->NewDirectByteBuffer(bufferInfo.videoBuffer, bufferInfo.videoBufferSize);
+            }
+            if(bufferInfo.audioBuffer != NULL && bufferInfo.audioBufferSize > 0) {
+                audioBuffer = env->NewDirectByteBuffer(bufferInfo.audioBuffer, bufferInfo.audioBufferSize);
+            }
+
+            jclass cls = env->FindClass("com/badlogic/gdx/video/VideoDecoder$VideoDecoderBuffers");
+            if(cls == NULL) {
+                logError("[wrapped_Java_com_badlogic_gdx_videoVideoDecoder_loadFile] Could not find VideoDecoderBuffers class");
+                return NULL;
+            }
+            jmethodID constructor = env->GetMethodID(cls, "<init>", "(Ljava/nio/ByteBuffer;Ljava/nio/ByteBuffer;IIII)V");
+            return env->NewObject(cls, constructor, videoBuffer, audioBuffer, bufferInfo.videoWidth, bufferInfo.videoHeight, bufferInfo.audioChannels, bufferInfo.audioSampleRate);
+		} catch(std::runtime_error e) {
+			logDebug("Caught exception \n");
+			jclass clazz = env->FindClass("java/lang/Exception");
+			if(clazz == 0) { //Something went horribly wrong here...
+				return 0;
+			}
+			env->ThrowNew(clazz, e.what());
+		} catch(std::invalid_argument e) {
+			jclass clazz = env->FindClass("java/lang/IllegalArgumentException");
+			if(clazz == 0) { //Something went horribly wrong here...
+				return 0;
+			}
+			env->ThrowNew(clazz, e.what());
+		}
+		return 0;
+						 */
+
 	/** This will return a ByteBuffer pointing to the next videoframe. This bytebuffer contains a single frame in RGB888.
 	 *
 	 * @return A ByteBuffer pointing to the next frame. */
