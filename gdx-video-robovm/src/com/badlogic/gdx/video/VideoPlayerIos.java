@@ -16,9 +16,13 @@
 
 package com.badlogic.gdx.video;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.iosrobovm.IOSApplication;
 import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.TextureData;
 import com.badlogic.gdx.utils.Null;
 
 import org.robovm.apple.avfoundation.AVAsset;
@@ -29,26 +33,46 @@ import org.robovm.apple.avfoundation.AVAudioSettings;
 import org.robovm.apple.avfoundation.AVMediaType;
 import org.robovm.apple.avfoundation.AVPixelAspectRatio;
 import org.robovm.apple.avfoundation.AVPixelBufferAttributes;
+import org.robovm.apple.avfoundation.AVPlayer;
+import org.robovm.apple.avfoundation.AVPlayerItem;
+import org.robovm.apple.avfoundation.AVPlayerItemOutput;
+import org.robovm.apple.avfoundation.AVPlayerItemTrack;
+import org.robovm.apple.avfoundation.AVPlayerItemVideoOutput;
+import org.robovm.apple.avfoundation.AVPlayerStatus;
 import org.robovm.apple.coreaudio.AudioChannelLayout;
 import org.robovm.apple.coreaudio.AudioChannelLayoutTag;
 import org.robovm.apple.coreaudio.AudioFormat;
 import org.robovm.apple.coreaudio.AudioStreamBasicDescription;
 import org.robovm.apple.coremedia.CMAudioFormatDescription;
 import org.robovm.apple.coremedia.CMFormatDescription;
+import org.robovm.apple.coremedia.CMTime;
 import org.robovm.apple.coremedia.CMVideoCodecType;
 import org.robovm.apple.coremedia.CMVideoDimensions;
 import org.robovm.apple.coremedia.CMVideoFormatDescription;
+import org.robovm.apple.corevideo.CVImageBuffer;
+import org.robovm.apple.corevideo.CVMetalTexture;
+import org.robovm.apple.corevideo.CVOpenGLESTexture;
+import org.robovm.apple.corevideo.CVPixelBuffer;
+import org.robovm.apple.corevideo.CVPixelBufferAttributes;
+import org.robovm.apple.corevideo.CVPixelBufferLockFlags;
+import org.robovm.apple.corevideo.CVPixelFormatType;
 import org.robovm.apple.foundation.NSArray;
 import org.robovm.apple.foundation.NSError;
 import org.robovm.apple.foundation.NSErrorException;
+import org.robovm.apple.foundation.NSKeyValueChangeInfo;
 import org.robovm.apple.foundation.NSObject;
 import org.robovm.apple.foundation.NSString;
 import org.robovm.apple.foundation.NSURL;
 import org.robovm.apple.photos.PHAssetMediaSubtype;
+import org.robovm.objc.block.VoidBlock1;
 import org.robovm.objc.block.VoidBlock2;
+import org.robovm.objc.block.VoidBooleanBlock;
 import org.robovm.rt.bro.NativeObject;
+import org.robovm.rt.bro.ptr.BytePtr;
 
 import java.io.FileNotFoundException;
+import java.nio.ByteBuffer;
+import java.nio.LongBuffer;
 import java.util.List;
 
 /** iOS implementation of the VideoPlayer class.
@@ -56,116 +80,202 @@ import java.util.List;
  * @author Maximilian Wende &lt;dasisdormax@mailbox.org&gt; */
 public class VideoPlayerIos implements VideoPlayer {
 
-	AVAsset asset;
-	AVAssetReader assetReader;
+	protected FileHandle file;
+	protected AVAsset asset;
+	AVPlayerItem playerItem;
+	AVPlayer player;
+	private boolean playerIsReady;
+	private boolean playerIsPrerolled;
+	private boolean pauseRequested;
+	private boolean isPlaying;
 
 	/* --- Video --- */
 	AVAssetTrack videoTrack;
 	CMVideoFormatDescription videoFormat;
 	CMVideoDimensions videoDimensions;
-	AVAssetReaderTrackOutput videoOutput;
+	AVPlayerItemVideoOutput videoOutput;
+	private Texture texture;
 
 	/* --- Audio --- */
 	AVAssetTrack audioTrack;
 	CMAudioFormatDescription audioFormat;
-	AVAssetReaderTrackOutput audioOutput;
 
 	/* --- Callbacks --- */
-	VideoSizeListener videoSizeListener;
-	CompletionListener completionListener;
+	private VideoSizeListener videoSizeListener;
+	private CompletionListener completionListener;
 
-	private void loadAudioTrack(AVAssetTrack track) {
-		List<? extends NativeObject> formatDescriptions = track.getFormatDescriptions();
-		audioTrack = track;
-		audioFormat = formatDescriptions.get(0).as(CMAudioFormatDescription.class);
-
-		AVAudioSettings settings = new AVAudioSettings();
-		settings.setFormat(AudioFormat.LinearPCM);
-		settings.setNumberOfChannels(2);
-		audioOutput = new AVAssetReaderTrackOutput(track, settings);
+	protected AVPlayerItemVideoOutput createVideoOutput() {
+		CVPixelBufferAttributes attributes = new CVPixelBufferAttributes();
+		attributes.setPixelFormatType(CVPixelFormatType._24RGB);
+		return new AVPlayerItemVideoOutput(attributes);
 	}
 
-	private void loadVideoTrack(AVAssetTrack track) {
-		videoTrack = track;
-		List<? extends NativeObject> formatDescriptions = track.getFormatDescriptions();
-		videoFormat = formatDescriptions.get(0).as(CMVideoFormatDescription.class);
-
-		videoDimensions = videoFormat.getDimensions();
-		if(videoSizeListener != null) {
-			videoSizeListener.onVideoSize(videoDimensions.getWidth(), videoDimensions.getHeight());
-		}
-
-		AVPixelBufferAttributes attributes = new AVPixelBufferAttributes();
-		attributes.setCompatibleWithMetal(true);
-		videoOutput = new AVAssetReaderTrackOutput(track, attributes);
-		assetReader.addOutput(videoOutput);
-	}
-
-	@Override
-	public boolean play(FileHandle file) {
-		if(!file.exists()) return false;
-		NSURL fileUrl = new NSURL(file.file());
-		asset = new AVAsset(fileUrl);
-		NSArray<? extends AVAssetTrack> tracks = asset.getTracks();
-		try {
-			assetReader = new AVAssetReader(asset);
-		} catch (NSErrorException e) {
-			throw new RuntimeException(e);
-		}
-		for(AVAssetTrack track : tracks) {
+	protected void loadTracks() {
+		// Get and print track infos
+		for(AVPlayerItemTrack itemTrack : playerItem.getTracks()) {
+			AVAssetTrack track = itemTrack.getAssetTrack();
 			String mediaType = track.getMediaType();
 			System.out.print("Track " + track.getTrackID() + ": ");
-			if(mediaType.equals(AVMediaType.Audio.value().toString())) {
-				loadAudioTrack(track);
+			List<? extends NativeObject> formatDescriptions = track.getFormatDescriptions();
+			if (mediaType.equals(AVMediaType.Audio.value().toString())) {
+				audioTrack = track;
+				audioFormat = formatDescriptions.get(0).as(CMAudioFormatDescription.class);
 				AudioStreamBasicDescription asbd = audioFormat.getFormatList().getASBD();
 				System.out.print("Audio, " + asbd.getFormat() + "@" + (asbd.getSampleRate() / 1000) + "kHz");
-			} else if(mediaType.equals(AVMediaType.Video.value().toString())) {
-				loadVideoTrack(track);
-				System.out.print(
-					"Video, " + CMVideoCodecType.valueOf(videoFormat.getMediaSubType()) +
-					"@" + getVideoWidth() + "x" + getVideoHeight()
-				);
+			} else if (mediaType.equals(AVMediaType.Video.value().toString())) {
+				videoTrack = track;
+				videoFormat = formatDescriptions.get(0).as(CMVideoFormatDescription.class);
+				videoDimensions = videoFormat.getDimensions();
+				if(videoSizeListener != null) {
+					videoSizeListener.onVideoSize(videoDimensions.getWidth(), videoDimensions.getHeight());
+				}
+				System.out.print("Video, " + CMVideoCodecType.valueOf(videoFormat.getMediaSubType())
+						+ "@" + getVideoWidth() + "x" + getVideoHeight());
 			} else {
 				System.out.print("Other (" + mediaType + ")");
 			}
 			System.out.println();
 		}
-
-		return assetReader.startReading();
 	}
 
+	private void onPlayerReady () {
+		// Preroll player
+		player.prerollAtRate(1.0f, new VoidBooleanBlock() {
+			@Override
+			public void invoke(boolean success) {
+				if(!success) return;
+				onPlayerPrerolled();
+			}
+		});
+	}
 
+	private void onPlayerPrerolled() {
+		loadTracks();
+		playerIsPrerolled = true;
+		if(!pauseRequested) {
+			resume();
+		}
+	}
+
+	@Override
+	public boolean play(FileHandle file) {
+		dispose();
+
+		if(!file.exists()) return false;
+		this.file = file;
+		NSURL fileUrl = new NSURL(file.file());
+		asset = new AVAsset(fileUrl);
+		playerItem = new AVPlayerItem(asset);
+		player = new AVPlayer(playerItem);
+
+		player.addKeyValueObserver("status", new NSObject.NSKeyValueObserver() {
+			@Override
+			public void observeValue(String keyPath, NSObject object, NSKeyValueChangeInfo change) {
+				AVPlayer player = object.as(AVPlayer.class);
+				System.out.println("Player status is " + player.getStatus() + ".");
+				if(!playerIsReady && player.getStatus() == AVPlayerStatus.ReadyToPlay) {
+					playerIsReady = true;
+					onPlayerReady();
+				}
+			}
+		});
+
+		AVPlayerItem.Notifications.observeDidPlayToEndTime(playerItem, new VoidBlock1<AVPlayerItem>() {
+			@Override
+			public void invoke(AVPlayerItem avPlayerItem) {
+				if(completionListener != null) {
+					completionListener.onCompletionListener(VideoPlayerIos.this.file);
+				}
+			}
+		});
+
+		videoOutput = createVideoOutput();
+		playerItem.addOutput(videoOutput);
+
+		return true;
+	}
+
+	protected void updateTextureFromBuffer(CVImageBuffer buffer) {
+		CVPixelBuffer pixelBuffer = buffer.as(CVPixelBuffer.class);
+		texture.bind();
+		pixelBuffer.lockBaseAddress(CVPixelBufferLockFlags.ReadOnly);
+		ByteBuffer bytes = pixelBuffer.getBaseAddress().as(BytePtr.class).asByteBuffer((int)pixelBuffer.getDataSize());
+		Gdx.gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, getVideoWidth(), getVideoHeight(),
+				0, GL20.GL_RGB, GL20.GL_UNSIGNED_BYTE, bytes);
+		pixelBuffer.unlockBaseAddress(CVPixelBufferLockFlags.ReadOnly);
+	}
 
 	@Override
 	public boolean update() {
-
+		if(player == null) return false;
+		CMTime position = player.getCurrentTime();
+		if(!videoOutput.hasNewPixelBufferForItemTime(position)) return false;
+		// TODO: use CVOpenGLESTexture or CVMetalTexture directly to reduce
+		//       the number of copies required
+		CVImageBuffer buffer = videoOutput.getPixelBufferForItemTime(position, null);
+		if(buffer == null) {
+			return false;
+		}
+		if(texture == null) {
+			texture = new Texture(getVideoWidth(), getVideoHeight(), Pixmap.Format.RGB888);
+		}
+		updateTextureFromBuffer(buffer);
 		return true;
 	}
 
 	@Override
 	public Texture getTexture() {
-		return null;
+		return texture;
 	}
 
 	@Override
 	public boolean isBuffered() {
-		if(videoTrack == null) return false;
-		return true;
+		return playerIsPrerolled;
 	}
 
 	@Override
 	public void pause() {
-
+		if(!playerIsPrerolled) {
+			pauseRequested = true;
+		} else {
+			player.pause();
+			isPlaying = false;
+		}
 	}
 
 	@Override
 	public void resume() {
-
+		pauseRequested = false;
+		if(playerIsPrerolled) {
+			player.play();
+			isPlaying = true;
+		}
 	}
 
 	@Override
 	public void stop() {
+		if(player != null) {
+			player.cancelPendingPrerolls();
+			pause();
+			playerItem.removeOutput(videoOutput);
+		}
 
+		playerIsReady = false;
+		playerIsPrerolled = false;
+		pauseRequested = false;
+
+		audioTrack = null;
+		audioFormat = null;
+
+		videoOutput = null;
+		videoFormat = null;
+		videoDimensions = null;
+		videoTrack = null;
+
+		playerItem = null;
+		player = null;
+		asset = null;
+		file = null;
 	}
 
 	@Override
@@ -174,8 +284,8 @@ public class VideoPlayerIos implements VideoPlayer {
 	}
 
 	@Override
-	public void setOnCompletionListener(CompletionListener listener) {
-
+	public void setOnCompletionListener(final CompletionListener listener) {
+		completionListener = listener;
 	}
 
 	@Override
@@ -192,32 +302,39 @@ public class VideoPlayerIos implements VideoPlayer {
 
 	@Override
 	public boolean isPlaying() {
-		return false;
+		return isPlaying;
 	}
 
 	@Override
 	public int getCurrentTimestamp() {
-		return 0;
+		if(player == null) return 0;
+		return (int)(player.getCurrentTime().getSeconds() * 1000);
 	}
 
 	@Override
 	public void dispose() {
-
+		stop();
+		if(texture != null) {
+			texture.dispose();
+		}
+		texture = null;
 	}
 
 	@Override
 	public void setVolume(float volume) {
-
+		if(player == null) return;
+		player.setVolume(volume);
 	}
 
 	@Override
 	public float getVolume() {
-		return 0;
+		if(player == null) return 0f;
+		return player.getVolume();
 	}
 
 	@Override
 	public void setLooping(boolean looping) {
-
+		// TODO: not supported
 	}
 
 	@Override
