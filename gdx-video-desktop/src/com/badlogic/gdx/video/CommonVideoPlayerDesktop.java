@@ -49,6 +49,7 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 	long timeBeforePause = 0;
 
 	int currentVideoWidth, currentVideoHeight;
+	int videoBufferWidth;
 	VideoSizeListener sizeListener;
 	CompletionListener completionListener;
 	FileHandle currentFile;
@@ -59,6 +60,14 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 	}
 
 	abstract Music createMusic (VideoDecoder decoder, ByteBuffer audioBuffer, int audioChannels, int sampleRate);
+
+	private int getTextureWidth() {
+		return videoBufferWidth;
+	}
+
+	private int getTextureHeight() {
+		return currentVideoHeight;
+	}
 
 	@Override
 	public boolean play (FileHandle file) throws FileNotFoundException {
@@ -97,7 +106,8 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 				}
 				currentVideoWidth = buffers.getVideoWidth();
 				currentVideoHeight = buffers.getVideoHeight();
-				if (texture != null && (texture.getWidth() != currentVideoWidth || texture.getHeight() != currentVideoHeight)) {
+				videoBufferWidth = buffers.getVideoBufferWidth();
+				if (texture != null && (texture.getWidth() != getTextureWidth() || texture.getHeight() != getTextureHeight())) {
 					texture.dispose();
 					texture = null;
 				}
@@ -148,9 +158,9 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 			if (!showAlreadyDecodedFrame) {
 				ByteBuffer videoData = decoder.nextVideoFrame();
 				if (videoData != null) {
-					if (texture == null) texture = new Texture(currentVideoWidth, currentVideoHeight, Format.RGB888);
+					if (texture == null) texture = new Texture(getTextureWidth(), getTextureHeight(), Format.RGB888);
 					texture.bind();
-					Gdx.gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, currentVideoWidth, currentVideoHeight, 0, GL20.GL_RGB,
+					Gdx.gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, getTextureWidth(), getTextureHeight(), 0, GL20.GL_RGB,
 						GL20.GL_UNSIGNED_BYTE, videoData);
 					newFrame = true;
 				} else {

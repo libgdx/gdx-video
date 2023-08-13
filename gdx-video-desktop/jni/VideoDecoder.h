@@ -45,6 +45,7 @@ struct VideoBufferInfo {
     void* videoBuffer;
     void* audioBuffer;
     int videoBufferSize;
+    int videoBufferWidth;
     int videoWidth;
     int videoHeight;
     int audioBufferSize;

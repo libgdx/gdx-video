@@ -31,16 +31,20 @@ public class VideoDecoder implements Disposable {
 	public static class VideoDecoderBuffers {
 		private ByteBuffer videoBuffer;
 		private ByteBuffer audioBuffer;
+		private int videoBufferWidth;
 		private int videoWidth;
 		private int videoHeight;
 		private int audioChannels;
 		private int audioSampleRate;
 
 		// If constructor parameters are changed, please also update the native code to call the new constructor!
-		private VideoDecoderBuffers (ByteBuffer videoBuffer, ByteBuffer audioBuffer, int videoWidth, int videoHeight,
-			int audioChannels, int audioSampleRate) {
+		private VideoDecoderBuffers (ByteBuffer videoBuffer, ByteBuffer audioBuffer,
+			int videoBufferWidth, int videoWidth, int videoHeight,
+			int audioChannels, int audioSampleRate)
+		{
 			this.videoBuffer = videoBuffer;
 			this.audioBuffer = audioBuffer;
+			this.videoBufferWidth = videoBufferWidth;
 			this.videoWidth = videoWidth;
 			this.videoHeight = videoHeight;
 			this.audioChannels = audioChannels;
@@ -65,6 +69,12 @@ public class VideoDecoder implements Disposable {
 		/** @return The audio's samplerate */
 		public int getAudioSampleRate () {
 			return audioSampleRate;
+		}
+
+		/** @return The number of pixels per row in the decoding
+		 * buffer, may be larger than the video width */
+		public int getVideoBufferWidth() {
+			return videoBufferWidth;
 		}
 
 		/** @return The height of the video */
@@ -211,8 +221,8 @@ public class VideoDecoder implements Disposable {
                 logError("[wrapped_Java_com_badlogic_gdx_videoVideoDecoder_loadFile] Could not find VideoDecoderBuffers class");
                 return NULL;
             }
-            jmethodID constructor = env->GetMethodID(cls, "<init>", "(Ljava/nio/ByteBuffer;Ljava/nio/ByteBuffer;IIII)V");
-            return env->NewObject(cls, constructor, videoBuffer, audioBuffer, bufferInfo.videoWidth, bufferInfo.videoHeight, bufferInfo.audioChannels, bufferInfo.audioSampleRate);
+            jmethodID constructor = env->GetMethodID(cls, "<init>", "(Ljava/nio/ByteBuffer;Ljava/nio/ByteBuffer;IIIII)V");
+            return env->NewObject(cls, constructor, videoBuffer, audioBuffer, bufferInfo.videoBufferWidth, bufferInfo.videoWidth, bufferInfo.videoHeight, bufferInfo.audioChannels, bufferInfo.audioSampleRate);
 		} catch(std::runtime_error e) {
 			logDebug("Caught exception \n");
 			jclass clazz = env->FindClass("java/lang/Exception");
@@ -253,8 +263,8 @@ public class VideoDecoder implements Disposable {
                 logError("[wrapped_Java_com_badlogic_gdx_videoVideoDecoder_loadFile] Could not find VideoDecoderBuffers class");
                 return NULL;
             }
-            jmethodID constructor = env->GetMethodID(cls, "<init>", "(Ljava/nio/ByteBuffer;Ljava/nio/ByteBuffer;IIII)V");
-            return env->NewObject(cls, constructor, videoBuffer, audioBuffer, bufferInfo.videoWidth, bufferInfo.videoHeight, bufferInfo.audioChannels, bufferInfo.audioSampleRate);
+            jmethodID constructor = env->GetMethodID(cls, "<init>", "(Ljava/nio/ByteBuffer;Ljava/nio/ByteBuffer;IIIII)V");
+            return env->NewObject(cls, constructor, videoBuffer, audioBuffer, bufferInfo.videoBufferWidth, bufferInfo.videoWidth, bufferInfo.videoHeight, bufferInfo.audioChannels, bufferInfo.audioSampleRate);
 		} catch(std::runtime_error e) {
 			logDebug("Caught exception \n");
 			jclass clazz = env->FindClass("java/lang/Exception");

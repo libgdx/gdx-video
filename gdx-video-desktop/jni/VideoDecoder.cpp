@@ -240,9 +240,11 @@ void VideoDecoder::loadContainer(VideoBufferInfo* bufferInfo) {
     }
 
     videoFrameSize = rgbFrames[0]->buf[0]->size;
+    int lineSize = rgbFrames[0]->linesize[0];
 
     bufferInfo->videoBuffer = rgbFrames[0]->data[0];
     bufferInfo->videoBufferSize = videoFrameSize;
+    bufferInfo->videoBufferWidth = lineSize / 3;
     bufferInfo->videoWidth = width;
     bufferInfo->videoHeight = height;
 
