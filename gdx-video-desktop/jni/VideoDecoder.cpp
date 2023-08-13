@@ -35,6 +35,10 @@ VideoDecoder::VideoDecoder() : decodeCondvar(decodeMutex), displayCondvar(displa
     videoOutputEnded = false;
     audioOutputEnded = false;
 
+    customFileBufferFuncData = NULL;
+    fillFileBufferFunc = NULL;
+    cleanupFunc = NULL;
+
     formatContext = NULL;
     videoCodecContext = NULL;
     audioCodecContext = NULL;
@@ -87,10 +91,7 @@ VideoDecoder::~VideoDecoder() {
     av_frame_free(&frame);
     avformat_close_input(&formatContext);
     av_freep(&audioDecodingBuffer);
-
-    if(avioContext != NULL) {
-        av_freep(&avioContext);
-    }
+    av_freep(&avioContext);
 }
 
 void VideoDecoder::loadFile(char* filename, VideoBufferInfo *bufferInfo) {
