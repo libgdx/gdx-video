@@ -17,62 +17,39 @@
 package com.badlogic.gdx.video;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.backends.iosrobovm.IOSApplication;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.TextureData;
-import com.badlogic.gdx.utils.Null;
 
 import org.robovm.apple.avfoundation.AVAsset;
-import org.robovm.apple.avfoundation.AVAssetReader;
-import org.robovm.apple.avfoundation.AVAssetReaderTrackOutput;
 import org.robovm.apple.avfoundation.AVAssetTrack;
-import org.robovm.apple.avfoundation.AVAudioSettings;
 import org.robovm.apple.avfoundation.AVMediaType;
-import org.robovm.apple.avfoundation.AVPixelAspectRatio;
-import org.robovm.apple.avfoundation.AVPixelBufferAttributes;
 import org.robovm.apple.avfoundation.AVPlayer;
 import org.robovm.apple.avfoundation.AVPlayerItem;
-import org.robovm.apple.avfoundation.AVPlayerItemOutput;
 import org.robovm.apple.avfoundation.AVPlayerItemTrack;
 import org.robovm.apple.avfoundation.AVPlayerItemVideoOutput;
 import org.robovm.apple.avfoundation.AVPlayerStatus;
-import org.robovm.apple.coreaudio.AudioChannelLayout;
-import org.robovm.apple.coreaudio.AudioChannelLayoutTag;
-import org.robovm.apple.coreaudio.AudioFormat;
 import org.robovm.apple.coreaudio.AudioStreamBasicDescription;
 import org.robovm.apple.coremedia.CMAudioFormatDescription;
-import org.robovm.apple.coremedia.CMFormatDescription;
 import org.robovm.apple.coremedia.CMTime;
 import org.robovm.apple.coremedia.CMVideoCodecType;
 import org.robovm.apple.coremedia.CMVideoDimensions;
 import org.robovm.apple.coremedia.CMVideoFormatDescription;
 import org.robovm.apple.corevideo.CVImageBuffer;
-import org.robovm.apple.corevideo.CVMetalTexture;
-import org.robovm.apple.corevideo.CVOpenGLESTexture;
 import org.robovm.apple.corevideo.CVPixelBuffer;
 import org.robovm.apple.corevideo.CVPixelBufferAttributes;
 import org.robovm.apple.corevideo.CVPixelBufferLockFlags;
 import org.robovm.apple.corevideo.CVPixelFormatType;
-import org.robovm.apple.foundation.NSArray;
-import org.robovm.apple.foundation.NSError;
-import org.robovm.apple.foundation.NSErrorException;
 import org.robovm.apple.foundation.NSKeyValueChangeInfo;
 import org.robovm.apple.foundation.NSObject;
-import org.robovm.apple.foundation.NSString;
 import org.robovm.apple.foundation.NSURL;
-import org.robovm.apple.photos.PHAssetMediaSubtype;
 import org.robovm.objc.block.VoidBlock1;
-import org.robovm.objc.block.VoidBlock2;
 import org.robovm.objc.block.VoidBooleanBlock;
 import org.robovm.rt.bro.NativeObject;
 import org.robovm.rt.bro.ptr.BytePtr;
 
-import java.io.FileNotFoundException;
 import java.nio.ByteBuffer;
-import java.nio.LongBuffer;
 import java.util.List;
 
 /** iOS implementation of the VideoPlayer class.
@@ -197,10 +174,16 @@ public class VideoPlayerIos implements VideoPlayer {
 
 	protected void updateTextureFromBuffer(CVImageBuffer buffer) {
 		CVPixelBuffer pixelBuffer = buffer.as(CVPixelBuffer.class);
+		long bpr = pixelBuffer.getBytesPerRow();
+		int texWidth = (int)bpr / 3;
+		int texHeight = (int)(pixelBuffer.getDataSize() / bpr);
+		if(texture == null) {
+			texture = new Texture(texWidth, texHeight, Pixmap.Format.RGB888);
+		}
 		texture.bind();
 		pixelBuffer.lockBaseAddress(CVPixelBufferLockFlags.ReadOnly);
 		ByteBuffer bytes = pixelBuffer.getBaseAddress().as(BytePtr.class).asByteBuffer((int)pixelBuffer.getDataSize());
-		Gdx.gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, getVideoWidth(), getVideoHeight(),
+		Gdx.gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, texWidth, texHeight,
 				0, GL20.GL_RGB, GL20.GL_UNSIGNED_BYTE, bytes);
 		pixelBuffer.unlockBaseAddress(CVPixelBufferLockFlags.ReadOnly);
 	}
@@ -210,14 +193,9 @@ public class VideoPlayerIos implements VideoPlayer {
 		if(player == null) return false;
 		CMTime position = player.getCurrentTime();
 		if(!videoOutput.hasNewPixelBufferForItemTime(position)) return false;
-		// TODO: use CVOpenGLESTexture or CVMetalTexture directly to reduce
-		//       the number of copies required
 		CVImageBuffer buffer = videoOutput.getPixelBufferForItemTime(position, null);
 		if(buffer == null) {
 			return false;
-		}
-		if(texture == null) {
-			texture = new Texture(getVideoWidth(), getVideoHeight(), Pixmap.Format.RGB888);
 		}
 		updateTextureFromBuffer(buffer);
 		return true;
