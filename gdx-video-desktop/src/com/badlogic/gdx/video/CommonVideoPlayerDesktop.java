@@ -144,8 +144,8 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 
 	@Override
 	public boolean update () {
-		if (decoder != null && !paused && playing) {
-			if (startTime == 0) {
+		if (decoder != null && (!paused || texture == null) && playing) {
+			if (!paused && startTime == 0) {
 				// Since startTime is 0, this means that we should now display the first frame of the video, and set the
 				// time.
 				startTime = System.currentTimeMillis();
