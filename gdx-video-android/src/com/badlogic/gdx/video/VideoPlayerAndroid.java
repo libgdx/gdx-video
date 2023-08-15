@@ -83,6 +83,13 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
 	private MediaPlayer player;
 	private boolean prepared = false;
+	/** Whether the video was requested to stay paused after loading
+	 *
+	 * To achieve this and still load the first video frame properly,
+	 * we play the video muted until the first frame is available, and
+	 * then pause.
+	 */
+	private boolean pauseRequested = false;
 	private boolean frameAvailable = false;
 	/** If the external should be drawn to the fbo and make it available thru {@link #getTexture()} */
 	public boolean renderToFbo = true;
@@ -147,6 +154,9 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 				if (fbo != null && (fbo.getWidth() != mp.getVideoWidth() || fbo.getHeight() != mp.getVideoHeight())) {
 					fbo.dispose();
 					fbo = null;
+				}
+				if(pauseRequested) {
+					mp.setVolume(0f, 0f);
 				}
 				mp.start();
 			}
@@ -262,6 +272,10 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	@Override
 	public void onFrameAvailable (SurfaceTexture surfaceTexture) {
 		synchronized (this) {
+			if(pauseRequested) {
+				player.pause();
+				pauseRequested = false;
+			}
 			frameAvailable = true;
 		}
 	}
@@ -271,6 +285,8 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		// If it is running
 		if (prepared) {
 			player.pause();
+		} else {
+			pauseRequested = true;
 		}
 	}
 
@@ -278,8 +294,10 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	public void resume () {
 		// If it is running
 		if (prepared) {
+			player.setVolume(currentVolume, currentVolume);
 			player.start();
 		}
+		pauseRequested = false;
 	}
 
 	@Override
