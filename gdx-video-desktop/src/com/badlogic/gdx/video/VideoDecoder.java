@@ -38,10 +38,8 @@ public class VideoDecoder implements Disposable {
 		private int audioSampleRate;
 
 		// If constructor parameters are changed, please also update the native code to call the new constructor!
-		private VideoDecoderBuffers (ByteBuffer videoBuffer, ByteBuffer audioBuffer,
-			int videoBufferWidth, int videoWidth, int videoHeight,
-			int audioChannels, int audioSampleRate)
-		{
+		private VideoDecoderBuffers (ByteBuffer videoBuffer, ByteBuffer audioBuffer, int videoBufferWidth, int videoWidth,
+			int videoHeight, int audioChannels, int audioSampleRate) {
 			this.videoBuffer = videoBuffer;
 			this.audioBuffer = audioBuffer;
 			this.videoBufferWidth = videoBufferWidth;
@@ -71,9 +69,8 @@ public class VideoDecoder implements Disposable {
 			return audioSampleRate;
 		}
 
-		/** @return The number of pixels per row in the decoding
-		 * buffer, may be larger than the video width */
-		public int getVideoBufferWidth() {
+		/** @return The number of pixels per row in the decoding buffer, may be larger than the video width */
+		public int getVideoBufferWidth () {
 			return videoBufferWidth;
 		}
 

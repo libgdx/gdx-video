@@ -25,6 +25,8 @@ run {
 	}
 }
 jar {
+	duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
+
 	archiveFileName = "${appName}-${archiveVersion.get()}.jar"
 	//// These can excluded because they add to the jar size but libGDX 1.9.11 can't use them.
 	//// If your libGDX version is 1.9.10 or earlier, or is 1.9.12-SNAPSHOT or later, you can leave

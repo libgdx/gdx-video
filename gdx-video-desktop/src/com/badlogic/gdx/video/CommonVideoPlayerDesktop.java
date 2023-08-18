@@ -61,11 +61,11 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 
 	abstract Music createMusic (VideoDecoder decoder, ByteBuffer audioBuffer, int audioChannels, int sampleRate);
 
-	private int getTextureWidth() {
+	private int getTextureWidth () {
 		return videoBufferWidth;
 	}
 
-	private int getTextureHeight() {
+	private int getTextureHeight () {
 		return currentVideoHeight;
 	}
 
@@ -96,7 +96,7 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 		VideoDecoderBuffers buffers;
 		try {
 			buffers = decoder.loadFile(this, file.path());
-			//buffers = decoder.loadStream(this, "readFileContents");
+			// buffers = decoder.loadStream(this, "readFileContents");
 
 			if (buffers != null) {
 				ByteBuffer audioBuffer = buffers.getAudioBuffer();
@@ -235,7 +235,7 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 			if (audio != null) {
 				audio.pause();
 			}
-			if(startTime != 0L) {
+			if (startTime != 0L) {
 				timeBeforePause = System.currentTimeMillis() - startTime;
 			} else {
 				timeBeforePause = 0L;

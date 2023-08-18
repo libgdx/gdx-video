@@ -81,15 +81,15 @@ public class VideoPlayerIos implements VideoPlayer {
 	private VideoSizeListener videoSizeListener;
 	private CompletionListener completionListener;
 
-	protected AVPlayerItemVideoOutput createVideoOutput() {
+	protected AVPlayerItemVideoOutput createVideoOutput () {
 		CVPixelBufferAttributes attributes = new CVPixelBufferAttributes();
 		attributes.setPixelFormatType(CVPixelFormatType._24RGB);
 		return new AVPlayerItemVideoOutput(attributes);
 	}
 
-	protected void loadTracks() {
+	protected void loadTracks () {
 		// Get and print track infos
-		for(AVPlayerItemTrack itemTrack : playerItem.getTracks()) {
+		for (AVPlayerItemTrack itemTrack : playerItem.getTracks()) {
 			AVAssetTrack track = itemTrack.getAssetTrack();
 			String mediaType = track.getMediaType();
 			System.out.print("Track " + track.getTrackID() + ": ");
@@ -103,11 +103,11 @@ public class VideoPlayerIos implements VideoPlayer {
 				videoTrack = track;
 				videoFormat = formatDescriptions.get(0).as(CMVideoFormatDescription.class);
 				videoDimensions = videoFormat.getDimensions();
-				if(videoSizeListener != null) {
+				if (videoSizeListener != null) {
 					videoSizeListener.onVideoSize(videoDimensions.getWidth(), videoDimensions.getHeight());
 				}
-				System.out.print("Video, " + CMVideoCodecType.valueOf(videoFormat.getMediaSubType())
-						+ "@" + getVideoWidth() + "x" + getVideoHeight());
+				System.out.print("Video, " + CMVideoCodecType.valueOf(videoFormat.getMediaSubType()) + "@" + getVideoWidth() + "x"
+					+ getVideoHeight());
 			} else {
 				System.out.print("Other (" + mediaType + ")");
 			}
@@ -119,26 +119,26 @@ public class VideoPlayerIos implements VideoPlayer {
 		// Preroll player
 		player.prerollAtRate(1.0f, new VoidBooleanBlock() {
 			@Override
-			public void invoke(boolean success) {
-				if(!success) return;
+			public void invoke (boolean success) {
+				if (!success) return;
 				onPlayerPrerolled();
 			}
 		});
 	}
 
-	private void onPlayerPrerolled() {
+	private void onPlayerPrerolled () {
 		loadTracks();
 		playerIsPrerolled = true;
-		if(!pauseRequested) {
+		if (!pauseRequested) {
 			resume();
 		}
 	}
 
 	@Override
-	public boolean play(FileHandle file) {
+	public boolean play (FileHandle file) {
 		dispose();
 
-		if(!file.exists()) return false;
+		if (!file.exists()) return false;
 		this.file = file;
 		NSURL fileUrl = new NSURL(file.file());
 		asset = new AVAsset(fileUrl);
@@ -147,10 +147,10 @@ public class VideoPlayerIos implements VideoPlayer {
 
 		player.addKeyValueObserver("status", new NSObject.NSKeyValueObserver() {
 			@Override
-			public void observeValue(String keyPath, NSObject object, NSKeyValueChangeInfo change) {
+			public void observeValue (String keyPath, NSObject object, NSKeyValueChangeInfo change) {
 				AVPlayer player = object.as(AVPlayer.class);
 				System.out.println("Player status is " + player.getStatus() + ".");
-				if(!playerIsReady && player.getStatus() == AVPlayerStatus.ReadyToPlay) {
+				if (!playerIsReady && player.getStatus() == AVPlayerStatus.ReadyToPlay) {
 					playerIsReady = true;
 					onPlayerReady();
 				}
@@ -159,8 +159,8 @@ public class VideoPlayerIos implements VideoPlayer {
 
 		AVPlayerItem.Notifications.observeDidPlayToEndTime(playerItem, new VoidBlock1<AVPlayerItem>() {
 			@Override
-			public void invoke(AVPlayerItem avPlayerItem) {
-				if(completionListener != null) {
+			public void invoke (AVPlayerItem avPlayerItem) {
+				if (completionListener != null) {
 					completionListener.onCompletionListener(VideoPlayerIos.this.file);
 				}
 			}
@@ -172,29 +172,28 @@ public class VideoPlayerIos implements VideoPlayer {
 		return true;
 	}
 
-	protected void updateTextureFromBuffer(CVImageBuffer buffer) {
+	protected void updateTextureFromBuffer (CVImageBuffer buffer) {
 		CVPixelBuffer pixelBuffer = buffer.as(CVPixelBuffer.class);
 		long bpr = pixelBuffer.getBytesPerRow();
 		int texWidth = (int)bpr / 3;
 		int texHeight = (int)(pixelBuffer.getDataSize() / bpr);
-		if(texture == null) {
+		if (texture == null) {
 			texture = new Texture(texWidth, texHeight, Pixmap.Format.RGB888);
 		}
 		texture.bind();
 		pixelBuffer.lockBaseAddress(CVPixelBufferLockFlags.ReadOnly);
 		ByteBuffer bytes = pixelBuffer.getBaseAddress().as(BytePtr.class).asByteBuffer((int)pixelBuffer.getDataSize());
-		Gdx.gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, texWidth, texHeight,
-				0, GL20.GL_RGB, GL20.GL_UNSIGNED_BYTE, bytes);
+		Gdx.gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, texWidth, texHeight, 0, GL20.GL_RGB, GL20.GL_UNSIGNED_BYTE, bytes);
 		pixelBuffer.unlockBaseAddress(CVPixelBufferLockFlags.ReadOnly);
 	}
 
 	@Override
-	public boolean update() {
-		if(player == null) return false;
+	public boolean update () {
+		if (player == null) return false;
 		CMTime position = player.getCurrentTime();
-		if(!videoOutput.hasNewPixelBufferForItemTime(position)) return false;
+		if (!videoOutput.hasNewPixelBufferForItemTime(position)) return false;
 		CVImageBuffer buffer = videoOutput.getPixelBufferForItemTime(position, null);
-		if(buffer == null) {
+		if (buffer == null) {
 			return false;
 		}
 		updateTextureFromBuffer(buffer);
@@ -202,18 +201,18 @@ public class VideoPlayerIos implements VideoPlayer {
 	}
 
 	@Override
-	public Texture getTexture() {
+	public Texture getTexture () {
 		return texture;
 	}
 
 	@Override
-	public boolean isBuffered() {
+	public boolean isBuffered () {
 		return playerIsPrerolled;
 	}
 
 	@Override
-	public void pause() {
-		if(!playerIsPrerolled) {
+	public void pause () {
+		if (!playerIsPrerolled) {
 			pauseRequested = true;
 		} else {
 			player.pause();
@@ -222,17 +221,17 @@ public class VideoPlayerIos implements VideoPlayer {
 	}
 
 	@Override
-	public void resume() {
+	public void resume () {
 		pauseRequested = false;
-		if(playerIsPrerolled) {
+		if (playerIsPrerolled) {
 			player.play();
 			isPlaying = true;
 		}
 	}
 
 	@Override
-	public void stop() {
-		if(player != null) {
+	public void stop () {
+		if (player != null) {
 			player.cancelPendingPrerolls();
 			pause();
 			playerItem.removeOutput(videoOutput);
@@ -257,66 +256,66 @@ public class VideoPlayerIos implements VideoPlayer {
 	}
 
 	@Override
-	public void setOnVideoSizeListener(VideoSizeListener listener) {
+	public void setOnVideoSizeListener (VideoSizeListener listener) {
 		videoSizeListener = listener;
 	}
 
 	@Override
-	public void setOnCompletionListener(final CompletionListener listener) {
+	public void setOnCompletionListener (final CompletionListener listener) {
 		completionListener = listener;
 	}
 
 	@Override
-	public int getVideoWidth() {
-		if(videoDimensions == null) return 0;
+	public int getVideoWidth () {
+		if (videoDimensions == null) return 0;
 		return videoDimensions.getWidth();
 	}
 
 	@Override
-	public int getVideoHeight() {
-		if(videoDimensions == null) return 0;
+	public int getVideoHeight () {
+		if (videoDimensions == null) return 0;
 		return videoDimensions.getHeight();
 	}
 
 	@Override
-	public boolean isPlaying() {
+	public boolean isPlaying () {
 		return isPlaying;
 	}
 
 	@Override
-	public int getCurrentTimestamp() {
-		if(player == null) return 0;
+	public int getCurrentTimestamp () {
+		if (player == null) return 0;
 		return (int)(player.getCurrentTime().getSeconds() * 1000);
 	}
 
 	@Override
-	public void dispose() {
+	public void dispose () {
 		stop();
-		if(texture != null) {
+		if (texture != null) {
 			texture.dispose();
 		}
 		texture = null;
 	}
 
 	@Override
-	public void setVolume(float volume) {
-		if(player == null) return;
+	public void setVolume (float volume) {
+		if (player == null) return;
 		player.setVolume(volume);
 	}
 
 	@Override
-	public float getVolume() {
-		if(player == null) return 0f;
+	public float getVolume () {
+		if (player == null) return 0f;
 		return player.getVolume();
 	}
 
 	@Override
-	public void setLooping(boolean looping) {
+	public void setLooping (boolean looping) {
 		// TODO: not supported
 	}
 
 	@Override
-	public boolean isLooping() {
+	public boolean isLooping () {
 		return false;
 	}
 }

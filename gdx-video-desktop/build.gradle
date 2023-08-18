@@ -29,12 +29,6 @@ clean.configure {
     dependsOn 'cleanFFmpeg'
 }
 
-tasks.register('patchFFmpeg') {
-    doFirst {
-        println(System.getenv("PATH"))
-    }
-}
-
 String checkCrossPrefix(String crossToolchain) {
     if (crossToolchain == null) return ""
     def result = project.exec {
@@ -56,7 +50,6 @@ void registerBuild(String buildName, String crossToolchain, String... extraArgs)
         dependsOn "cleanFFmpeg$buildName"
     }
     tasks.register("buildFFmpeg$buildName") {
-        dependsOn patchFFmpeg
         doFirst {
             mkdir buildDir
             String[] crossArgs = []
@@ -79,30 +72,29 @@ void registerBuild(String buildName, String crossToolchain, String... extraArgs)
             }
             project.exec {
                 workingDir buildDir
-                commandLine 'make', '-j'
+                commandLine 'make', '-j16'
             }
         }
         outputs.upToDateWhen { file("$buildDir/libavformat/libavformat.a").exists() }
     }
 }
 
-registerBuild 'Windows32', 'i686-w64-mingw32', '--arch=x86', '--target-os=mingw32', '--pkg-config=pkg-config'
-registerBuild 'Windows64', 'x86_64-w64-mingw32', '--arch=x86_64', '--target-os=mingw32', '--pkg-config=pkg-config'
+registerBuild 'Windows32', 'i686-w64-mingw32', '--arch=x86', '--target-os=mingw32'
+registerBuild 'Windows64', 'x86_64-w64-mingw32', '--arch=x86_64', '--target-os=mingw32'
 
-registerBuild 'Linux32', 'i686-linux-gnu', '--arch=i686', '--target-os=linux', '--extra-cflags="-m32"', '--extra-cxxflags="-m32"', '--extra-ldflags="-m32"'
-registerBuild 'Linux64', 'x86_64-linux-gnu', '--arch=x86_64', '--target-os=linux', '--disable-cuda', '--disable-cuvid', '--disable-asm'
+registerBuild 'Linux64', 'x86_64-linux-gnu', '--arch=x86_64', '--target-os=linux', '--disable-cuda', '--disable-cuvid'
 
 registerBuild 'LinuxARM32', 'arm-linux-gnueabihf', '--arch=arm', '--target-os=linux'
 registerBuild 'LinuxARM64', 'aarch64-linux-gnu', '--arch=aarch64', '--target-os=linux'
 
-registerBuild 'Macos64', null, '--arch=x86_64', '--target-os=darwin', '--cc=clang', '--cxx=clang++', '--dep-cc=clang', '--disable-asm',
+registerBuild 'Macos64', null, '--enable-cross-compile', '--arch=x86_64', '--target-os=darwin', '--cc=clang', '--cxx=clang++', '--dep-cc=clang',
         '--extra-cflags=-mmacosx-version-min=10.11 -arch x86_64', '--extra-cxxflags=-mmacosx-version-min=10.11 -arch x86_64', '--extra-ldflags=-mmacosx-version-min=10.11 -arch x86_64'
-registerBuild 'MacosARM64', null, '--arch=arm64', '--target-os=darwin', '--cc=clang', '--cxx=clang++', '--dep-cc=clang',
+registerBuild 'MacosARM64', null, '--enable-cross-compile', '--arch=arm64', '--target-os=darwin', '--cc=clang', '--cxx=clang++', '--dep-cc=clang',
         '--extra-cflags=-mmacosx-version-min=10.11 -arch arm64', '--extra-cxxflags=-mmacosx-version-min=10.11 -arch arm64', '--extra-ldflags=-mmacosx-version-min=10.11 -arch arm64'
 
 
 tasks.register('buildFFmpeg') {
-    dependsOn buildFFmpegWindows32, buildFFmpegWindows64, buildFFmpegLinux32, buildFFmpegLinux64, buildFFmpegLinuxARM32, buildFFmpegLinuxARM64
+    dependsOn buildFFmpegWindows32, buildFFmpegWindows64, buildFFmpegLinux64, buildFFmpegLinuxARM32, buildFFmpegLinuxARM64
 }
 
 jnigen {
@@ -128,30 +120,28 @@ jnigen {
     add(Windows, x32) {
         headerDirs += "../FFmpeg/build-windows32/"
         cppFlags += " -DWIN32 "
-        libraries += genLibs("windows32")
+        libraries += genLibs("windows32") + " -lbcrypt -lws2_32"
     }
     add(Windows, x64) {
         headerDirs += "../FFmpeg/build-windows64/"
         cppFlags += " -DWIN32 "
-        libraries += genLibs("windows64")
-    }
-    add(Linux, x32) {
-        headerDirs += "../FFmpeg/build-linux32/"
-        libraries += genLibs("linux32")
-        compilerPrefix = checkCrossPrefix('i686-linux-gnu')
+        libraries += genLibs("windows64") + " -lbcrypt -lws2_32"
     }
     add(Linux, x64) {
         headerDirs += "../FFmpeg/build-linux64/"
         libraries += genLibs("linux64")
         compilerPrefix = checkCrossPrefix('x86_64-linux-gnu')
+        linkerFlags += " -Wl,-Bsymbolic "
     }
     add(Linux, x32, ARM) {
         headerDirs += "../FFmpeg/build-linuxarm32/"
         libraries += genLibs("linuxarm32")
+        linkerFlags += " -Wl,-Bsymbolic "
     }
     add(Linux, x64, ARM) {
         headerDirs += "../FFmpeg/build-linuxarm64/"
         libraries += genLibs("linuxarm64")
+        linkerFlags += " -Wl,-Bsymbolic "
     }
     add(MacOsX, x64) {
         headerDirs += "../FFmpeg/build-macos64/"
