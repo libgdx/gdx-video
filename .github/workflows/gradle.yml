@@ -104,11 +104,11 @@ jobs:
         path: gdx-video-desktop/libs/**/*.dll
         if-no-files-found: error
 
-  pack-natives:
+  gradle-build:
     needs:
-      - natives-macos
-      - natives-linux
-      - natives-windows
+    - natives-macos
+    - natives-linux
+    - natives-windows
     runs-on: ubuntu-20.04
     env:
       ORG_GRADLE_PROJECT_GITHUB_USERNAME: ""
@@ -140,7 +140,7 @@ jobs:
     - name: Create debug keystore for android
       run: keytool -genkey -v -keystore $HOME/.android/debug.keystore -storetype PKCS12 -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -noprompt -dname "CN=GdxVideo, OU=libGDX, O=libGDX, L=Unknown, ST=Unknown, C=US"
 
-    - name: Build whole project with gradle
+    - name: Build library and test programs with gradle
       run: ./gradlew build
 
     - name: Upload all output libs
