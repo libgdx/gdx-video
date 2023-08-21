@@ -13,7 +13,10 @@ sourceCompatibility = 1.7
 sourceSets {
     main {
         java {
-            srcDirs = ["src/"]
+            srcDir 'src/'
+        }
+        resources {
+            srcDir 'res/'
         }
     }
 }

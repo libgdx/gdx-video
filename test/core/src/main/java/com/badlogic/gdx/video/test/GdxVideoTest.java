@@ -35,6 +35,10 @@ public class GdxVideoTest extends ApplicationAdapter {
 	OrthographicCamera camera;
 	VideoPlayer videoPlayer;
 
+	protected FileHandle getVideoFile () {
+		return Gdx.files.internal("libGDX - It's Good For You!.webm");
+	}
+
 	@Override
 	public void create () {
 		Gdx.app.setLogLevel(Application.LOG_DEBUG);
@@ -59,7 +63,7 @@ public class GdxVideoTest extends ApplicationAdapter {
 	public void render () {
 		if (Gdx.input.justTouched()) {
 			try {
-				videoPlayer.play(Gdx.files.internal("libGDX - It's Good For You!.webm"));
+				videoPlayer.play(getVideoFile());
 			} catch (FileNotFoundException e) {
 				Gdx.app.error("gdx-video", "Oh no!");
 			}
