@@ -27,18 +27,14 @@ jobs:
       run: brew install nasm
 
     - name: Build with Gradle
-      run: ./gradlew buildFFmpegMacos64 buildFFmpegMacosARM64 jnigen jnigenBuild
-
-    - name: Pack artifacts
-      run: |
-        find . -name "*.a" -o -name "*.dll" -o -name "*.dylib" -o -name "*.so"  | grep "libs" > native-files-list
-        zip -r natives-macos -@ < native-files-list
+      run: ./gradlew :gdx-video-desktop:buildFFmpegMacosAll :gdx-video-desktop:jnigenBuildMacosAll
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: natives-macos.zip
-        path: natives-macos.zip
+        name: desktop-natives
+        path: gdx-video-desktop/libs/**/*.dylib
+        if-no-files-found: error
 
   natives-linux:
     runs-on: ubuntu-20.04
@@ -66,18 +62,14 @@ jobs:
         sudo apt install -y --force-yes gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf libc6-dev-armhf-cross
 
     - name: Build natives with Gradle
-      run: ./gradlew buildFFmpegLinux64 buildFFmpegLinuxARM32 buildFFmpegLinuxARM64 jnigen jnigenBuildLinux64 jnigenBuildLinuxARM jnigenBuildLinuxARM64 --info
-
-    - name: Pack artifacts
-      run: |
-        find . -name "*.a" -o -name "*.dll" -o -name "*.dylib" -o -name "*.so"  | grep "libs" > native-files-list
-        zip -r natives-linux -@ < native-files-list
+      run: ./gradlew :gdx-video-desktop:buildFFmpegLinuxAll :gdx-video-desktop:jnigenBuildLinuxAll
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: natives-linux.zip
-        path: natives-linux.zip
+        name: desktop-natives
+        path: gdx-video-desktop/libs/**/*.so
+        if-no-files-found: error
 
   natives-windows:
     runs-on: ubuntu-20.04
@@ -103,18 +95,14 @@ jobs:
         sudo apt install -y --force-yes mingw-w64 lib32z1
 
     - name: Build natives with Gradle
-      run: ./gradlew buildFFmpegWindows32 buildFFmpegWindows64 jnigen jnigenBuildWindows jnigenBuildWindows64 jnigenJarNativesDesktop --info
-
-    - name: Pack artifacts
-      run: |
-        find . -name "*.a" -o -name "*.dll" -o -name "*.dylib" -o -name "*.so"  | grep "libs" > native-files-list
-        zip -r natives-windows -@ < native-files-list
+      run: ./gradlew :gdx-video-desktop:buildFFmpegWindowsAll :gdx-video-desktop:jnigenBuildWindowsAll
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: natives-windows.zip
-        path: natives-windows.zip
+        name: desktop-natives
+        path: gdx-video-desktop/libs/**/*.dll
+        if-no-files-found: error
 
   pack-natives:
     needs:
@@ -140,26 +128,11 @@ jobs:
     - name: Setup Gradle
       uses: gradle/gradle-build-action@v2
 
-    - name: Download natives-macos artifact
+    - name: Download desktop-natives artifact
       uses: actions/download-artifact@v3
       with:
-        name: natives-macos.zip
-
-    - name: Download natives-linux artifact
-      uses: actions/download-artifact@v3
-      with:
-        name: natives-linux.zip
-
-    - name: Download natives-windows artifact
-      uses: actions/download-artifact@v3
-      with:
-        name: natives-windows.zip
-
-    - name: Unpack natives
-      run: |
-        unzip -o natives-macos.zip
-        unzip -o natives-linux.zip
-        unzip -o natives-windows.zip
+        name: desktop-natives
+        path: gdx-video-desktop/libs
 
     - name: Create JAR with natives for desktop
       run: ./gradlew jnigenJarNativesDesktop --info

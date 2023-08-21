@@ -31,9 +31,11 @@ clean.configure {
 
 String checkCrossPrefix(String crossToolchain) {
     if (crossToolchain == null) return ""
+    def tc = crossToolchain
     def result = project.exec {
         ignoreExitValue = true
-        commandLine "bash", "-l", "-c", "command", "-v", "$crossToolchain-gcc"
+        commandLine "bash", "-l", "-c",
+            "(command -v $tc-g++ && command -v $tc-ar && command -v $tc-ld)>/dev/null"
     }
     if(result.getExitValue() == 0) {
         return "$crossToolchain-"
@@ -91,11 +93,6 @@ registerBuild 'Macos64', null, '--enable-cross-compile', '--arch=x86_64', '--tar
         '--extra-cflags=-mmacosx-version-min=10.11 -arch x86_64', '--extra-cxxflags=-mmacosx-version-min=10.11 -arch x86_64', '--extra-ldflags=-mmacosx-version-min=10.11 -arch x86_64'
 registerBuild 'MacosARM64', null, '--enable-cross-compile', '--arch=arm64', '--target-os=darwin', '--cc=clang', '--cxx=clang++', '--dep-cc=clang',
         '--extra-cflags=-mmacosx-version-min=10.11 -arch arm64', '--extra-cxxflags=-mmacosx-version-min=10.11 -arch arm64', '--extra-ldflags=-mmacosx-version-min=10.11 -arch arm64'
-
-
-tasks.register('buildFFmpeg') {
-    dependsOn buildFFmpegWindows32, buildFFmpegWindows64, buildFFmpegLinux64, buildFFmpegLinuxARM32, buildFFmpegLinuxARM64
-}
 
 jnigen {
     sharedLibName = "gdx-video-desktop"
@@ -157,6 +154,30 @@ jnigen {
         cppFlags += " -mmacosx-version-min=10.11"
         linkerFlags += " -mmacosx-version-min=10.11"
     }
+}
+
+tasks.register('buildFFmpegWindowsAll') {
+    dependsOn buildFFmpegWindows32, buildFFmpegWindows64
+}
+
+tasks.register('buildFFmpegLinuxAll') {
+    dependsOn buildFFmpegLinux64, buildFFmpegLinuxARM32, buildFFmpegLinuxARM64
+}
+
+tasks.register('buildFFmpegMacosAll') {
+    dependsOn buildFFmpegMacos64, buildFFmpegMacosARM64
+}
+
+tasks.register('jnigenBuildWindowsAll') {
+    dependsOn jnigenBuildWindows, jnigenBuildWindows64
+}
+
+tasks.register('jnigenBuildLinuxAll') {
+    dependsOn jnigenBuildLinux64, jnigenBuildLinuxARM, jnigenBuildLinuxARM64
+}
+
+tasks.register('jnigenBuildMacosAll') {
+    dependsOn jnigenBuildMacOsX64, jnigenBuildMacOsXARM64
 }
 
 jar {
