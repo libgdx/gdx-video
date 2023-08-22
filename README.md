@@ -80,8 +80,9 @@ player.play(file);
 ```
 
 The file gets loaded and starts playing as soon as the first frames
-are decoded. If you want to load a video ahead of time, `pause()` 
-immediately and `resume()` playback later.
+are decoded. Note that loading a file ahead of time is not supported
+yet. As a workaround, try to `pause()` the video once it has
+started playing and `resume()` playback later.
 
 Once the video has fully loaded, you may retrieve additional
 information about the file.
@@ -95,29 +96,8 @@ if(player.isBuffered()) {
 
 On each frame, call the `update()` function to acquire new video frames
 and keep the audio running. You may then retrieve the frame using `getTexture()`,
-but note that the texture may be larger than the video itself.
-
-```java
-class VideoActor extends Actor {
-    // ...
-    @Override
-    void act(float deltaTime) {
-        super.act();
-        player.update();
-    }
-    
-    @Override
-    void draw(Batch batch, float parentAlpha) {
-        Texture texture = player.getTexture();
-        if(texture == null) return;
-        batch.draw(texture,
-            getX(), getY(), getWidth(), getHeight(), // < Position and size to draw at
-            0, 0, videoWidth, videoHeight,           // < Video coordinates within the texture
-            false, false                             // < Do not flip the texture
-        );
-    }
-}
-```
+but note that the texture may be larger than the video itself. The provided
+`VideoActor` takes care of both tasks when using Scene2D.
 
 Once you are done playing, remember to `dispose()` the video player.
 
@@ -131,21 +111,26 @@ your game on real devices.
 
 ### File format and codec
 
-Format                 | Desktop | Android  | iOS     | Web
-=======================|=========|==========|=========|=====
-MP4 (H.264/AVC + AAC)  | ❌ *    | ✅       | ✅      | ⚠️
-MP4 (H.265/HEVC + AAC) | ❌ *    | ⚠️ > 5.0 | ⚠️ > 11 | ⚠️
-WebM (VP8 + Vorbis)    | ✅      | ✅       | ❌      | ✅
-WebM (VP9 + Opus)      | ✅      | ⚠️ > 5.0 | ❌      | ❔
-MKV (AV1 + Opus)       | ✅      | ⚠️ > 10  | ❌      | ⚠️
+| Format                 | Desktop  | Android  | iOS     | Web |
+|------------------------|----------|----------|---------|-----|
+| MP4 (H.264/AVC + AAC)  | ❌ *      | ✅ *      | ✅       | ⚠️  |
+| MP4 (H.265/HEVC + AAC) | ❌ *      | ⚠️ > 5.0 | ⚠️ > 11 | ⚠️  |
+| WebM (VP8 + Vorbis)    | ✅        | ✅        | ❌       | ✅   |
+| WebM (VP9 + Opus)      | ✅        | ⚠️ > 5.0 | ❌       | ❔   |
+| MKV (AV1 + Opus)       | ✅        | ⚠️ > 10  | ❌       | ⚠️  |
 
-Note that additional formats and codecs can be enabled on
-desktop when compiling gdx-video yourself.
+#### Additional notes
 
-**iOS**: https://support.apple.com/de-de/HT207022
+**Desktop:** Additional formats and codecs can be enabled when compiling 
+gdx-video yourself.
 
-**Android**: For more details about supported media formats, visit 
+**iOS**: H.265 support notes from apple: <https://support.apple.com/de-de/HT207022>
+
+**Android**: See the following webpage for officially supported media formats: 
 <https://developer.android.com/guide/topics/media/platform/supported-formats>.
+Note that this support table is not always accurate, especially for devices
+and emulator images without Google Play Services. When in doubt, use VP8, VP9
+and Vorbis.
 
 ### Resolution and framerate
 
@@ -158,26 +143,35 @@ visual or audio artifacts or even game crashes.
 
 #### Examples (using H.264 levels):
 
-Level | (Mobile) device category | Example 1            | Example 2
-======|==========================|======================|=====================
-3     | Low end                  |  720 x  480 @  30fps | -
-3.1   |                          |  720 x  480 @  60fps | 1280 x  720 @ 30fps
-4     | Budget / mid range       | 1280 x  720 @  60fps | 1920 x 1080 @ 30fps
-4.2   |                          | 1280 x  720 @ 120fps | 1920 x 1080 @ 60fps
-5.1   | High performance         | 1920 x 1080 @ 120fps | 3840 x 2160 @ 30fps
+| Level | (Mobile) device category | Example 1            | Example 2           |
+|-------|--------------------------|----------------------|---------------------|
+| 3     | Low end                  | 720 x  480 @  30fps  | -                   |
+| 3.1   |                          | 720 x  480 @  60fps  | 1280 x  720 @ 30fps |
+| 4     | Budget / mid range       | 1280 x  720 @  60fps | 1920 x 1080 @ 30fps |
+| 4.2   |                          | 1280 x  720 @ 120fps | 1920 x 1080 @ 60fps |
+| 5.1   | High performance         | 1920 x 1080 @ 120fps | 3840 x 2160 @ 30fps |
 
 #### Possible approaches:
 
 - Use a lower resolution as 'baseline' that works on all target devices
 - Ship your videos in multiple resolutions and guess the best one for the
-  device (e.g. based on RAM size or display resolution)
+  device (e.g. based on OS version, RAM size or display resolution)
 
 ## Contributing
 
 ### Building from source
-To build from source, clone or download this repository, then open it in Android Studio. Perform the following command to compile and upload the library in your local repository:
 
-    gradlew clean uploadArchives -PLOCAL=true
+To build from source, clone or download this repository, then open it in Android Studio
+and perform a gradle sync. If you get any *ZipFile* errors, watch the logs above and
+install the remaining Android SDK components through the SDK manager.
+
+When building for desktop, build the native components using the Gradle tasks
+`:gdx-video-desktop:buildFFmpeg{platform}{arch}`
+and `:gdx-video-desktop:jnigenBuild{platform}{arch}`.
+
+Perform the following command to compile and upload the library in your local repository:
+
+    ./gradlew publishToMavenLocal
 
 See `build.gradle` file for current version to use in your dependencies.
 
