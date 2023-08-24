@@ -33,6 +33,7 @@ class RawMusic extends OpenALMusic {
 		super((OpenALLwjglAudio)Gdx.audio, null);
 		this.decoder = decoder;
 		backBuffer = buffer;
+		backBuffer.position(backBuffer.limit());
 		setup(channels, sampleRate);
 	}
 
