@@ -171,6 +171,8 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		player.setOnCompletionListener(new OnCompletionListener() {
 			@Override
 			public void onCompletion (MediaPlayer mp) {
+				if (isLooping()) return;
+				prepared = false;
 				if (completionListener != null) {
 					completionListener.onCompletionListener(file);
 				}

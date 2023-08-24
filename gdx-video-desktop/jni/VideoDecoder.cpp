@@ -49,7 +49,7 @@ VideoDecoder::VideoDecoder() : decodeCondvar(decodeMutex), displayCondvar(displa
     currentFrameDisplayed = 0;
     totalFramesBuffered = 0;
 
-    timestampOffset = -1;
+    timestampOffset = 0;
 }
 
 VideoDecoder::~VideoDecoder() {
@@ -335,7 +335,7 @@ int VideoDecoder::decodeAudio(void* decodingBuffer, int buf_samples) {
 }
 
 double VideoDecoder::getCurrentFrameTimestamp() {
-    return rgbFrames[getReadIndex()]->pts * timeBase;
+    return rgbFrames[getReadIndex()]->pts * timeBase + timestampOffset;
 }
 
 bool VideoDecoder::readPacket() {

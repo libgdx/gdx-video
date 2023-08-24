@@ -54,7 +54,7 @@ public class VideoPlayerGwt implements VideoPlayer {
 
 				if (videoSizeListener != null) videoSizeListener.onVideoSize(width, height);
 			}
-			if (!v.isPaused() && isBuffered() && v.getVideoWidth() > 0 && v.getVideoHeight() > 0) {
+			if ((!v.isPaused() || v.getCurrentTime() == 0) && isBuffered() && width * height > 0) {
 				if (frame != null && (frame.getWidth() != width || frame.getHeight() != height)) {
 					frame.dispose();
 					frame = null;
@@ -87,7 +87,7 @@ public class VideoPlayerGwt implements VideoPlayer {
 
 	@Override
 	public void resume () {
-		if (v != null && v.getCurrentTime() > 0 && v.getCurrentTime() < v.getDuration()) v.play();
+		if (v != null && (v.getCurrentTime() == 0 || v.getCurrentTime() < v.getDuration())) v.play();
 	}
 
 	@Override
