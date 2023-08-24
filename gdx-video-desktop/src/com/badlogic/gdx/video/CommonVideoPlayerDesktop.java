@@ -16,12 +16,8 @@
 
 package com.badlogic.gdx.video;
 
-import java.io.BufferedInputStream;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Music;
@@ -42,10 +38,9 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 	long startTime = 0;
 	boolean showAlreadyDecodedFrame = false;
 
-	BufferedInputStream inputStream;
-	ReadableByteChannel fileChannel;
-
 	boolean paused = false;
+	boolean looping = false;
+	boolean isFirstFrame = true;
 	long timeBeforePause = 0;
 
 	int currentVideoWidth, currentVideoHeight;
@@ -89,14 +84,11 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 			stop();
 		}
 
-		inputStream = file.read(1024 * 1024);
-		fileChannel = Channels.newChannel(inputStream);
-
+		isFirstFrame = true;
 		decoder = new VideoDecoder();
 		VideoDecoderBuffers buffers;
 		try {
-			buffers = decoder.loadFile(this, file.path());
-			// buffers = decoder.loadStream(this, "readFileContents");
+			buffers = decoder.loadFile(file.path());
 
 			if (buffers != null) {
 				ByteBuffer audioBuffer = buffers.getAudioBuffer();
@@ -127,24 +119,9 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 		return true;
 	}
 
-	/** Called by jni to fill in the file buffer.
-	 *
-	 * @param buffer The buffer that needs to be filled
-	 * @return The amount that has been filled into the buffer. */
-	@SuppressWarnings("unused")
-	private int readFileContents (ByteBuffer buffer) {
-		try {
-			buffer.rewind();
-			return fileChannel.read(buffer);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return 0;
-	}
-
 	@Override
 	public boolean update () {
-		if (decoder != null && (!paused || texture == null) && playing) {
+		if (decoder != null && (!paused || isFirstFrame) && playing) {
 			if (!paused && startTime == 0) {
 				// Since startTime is 0, this means that we should now display the first frame of the video, and set the
 				// time.
@@ -163,6 +140,16 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 					Gdx.gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, getTextureWidth(), getTextureHeight(), 0, GL20.GL_RGB,
 						GL20.GL_UNSIGNED_BYTE, videoData);
 					newFrame = true;
+				} else if (isFirstFrame) {
+					return false;
+				} else if (looping) {
+					try {
+						// NOTE: this just creates a new decoder instead of reusing the existing one.
+						play(currentFile);
+					} catch (FileNotFoundException e) {
+						throw new RuntimeException(e);
+					}
+					return false;
 				} else {
 					playing = false;
 					if (completionListener != null) {
@@ -172,6 +159,7 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 				}
 			}
 
+			isFirstFrame = false;
 			long currentFrameTimestamp = (long)(decoder.getCurrentFrameTimestamp() * 1000.0);
 			long currentVideoTime = System.currentTimeMillis() - startTime;
 			long millisecondsAhead = currentFrameTimestamp - currentVideoTime;
@@ -207,25 +195,14 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 			audio.dispose();
 			audio = null;
 		}
-		if (texture != null) {
-			texture.dispose();
-			texture = null;
-		}
 		if (decoder != null) {
 			decoder.dispose();
 			decoder = null;
 		}
-		if (inputStream != null) {
-			try {
-				inputStream.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			inputStream = null;
-		}
 
 		startTime = 0;
 		showAlreadyDecodedFrame = false;
+		isFirstFrame = true;
 	}
 
 	@Override
@@ -257,6 +234,10 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 	@Override
 	public void dispose () {
 		stop();
+		if (texture != null) {
+			texture.dispose();
+			texture = null;
+		}
 	}
 
 	@Override
@@ -296,12 +277,12 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 
 	@Override
 	public void setLooping (boolean looping) {
-		// TODO
+		this.looping = looping;
 	}
 
 	@Override
 	public boolean isLooping () {
-		return false;
+		return looping;
 	}
 
 	@Override

@@ -22,40 +22,26 @@
 
 #include <pthread.h>
 
-static int readFunction(void* opaque, uint8_t* buffer, int bufferSize)
-{
-    VideoDecoder* decoder = (VideoDecoder*) opaque;
-
-    //Call implemented function
-    return decoder->getFillFileBufferFunc()(decoder->getCustomFileBufferFuncData(), buffer, bufferSize);
-}
-
 VideoDecoder::VideoDecoder() : decodeCondvar(decodeMutex), displayCondvar(displayMutex) {
     fileLoaded = false;
     videoOutputEnded = false;
     audioOutputEnded = false;
 
-    customFileBufferFuncData = NULL;
-    fillFileBufferFunc = NULL;
-    cleanupFunc = NULL;
-
     formatContext = NULL;
     videoCodecContext = NULL;
     audioCodecContext = NULL;
-    avioContext = NULL;
-    avioBuffer = NULL;
 
     videoCodec = NULL;
     audioCodec = NULL;
     swsContext = NULL;
     swrContext = NULL;
 
-    timeout = (struct timespec) { .tv_sec = 0, .tv_nsec = 1000000 };
     frame = av_frame_alloc();
     for(int i = 0; i < VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES; i++) {
         rgbFrames[i] = av_frame_alloc();
         rgbFrames[i]->pts = 0;
     }
+    memset(audioBuffer, 0, VIDEOPLAYER_AUDIO_BUFFER_SIZE);
     audioFrame = av_frame_alloc();
     audioDecodingBuffer = NULL;
     audioDecodedSize = 0;
@@ -91,7 +77,6 @@ VideoDecoder::~VideoDecoder() {
     av_frame_free(&frame);
     avformat_close_input(&formatContext);
     av_freep(&audioDecodingBuffer);
-    av_freep(&avioContext);
 }
 
 void VideoDecoder::loadFile(char* filename, VideoBufferInfo *bufferInfo) {
@@ -112,44 +97,16 @@ void VideoDecoder::loadFile(char* filename, VideoBufferInfo *bufferInfo) {
         logError("[VideoPlayer::loadFile] Error opening file (%s): %s\n", filename, error);
         throw std::runtime_error("Could not open file!");
     }
-    loadContainer(bufferInfo);
-}
 
-void VideoDecoder::loadFile(FillFileBufferFunc func, void* funcData, CleanupFunc cleanupFunc, VideoBufferInfo* bufferInfo) {
-    if(fileLoaded) {
-        logError("[VideoPlayer::loadFile] Tried to load a new file. Ignoring...\n");
-        return;
-    }
-
-    if(func == NULL) {
-        logError("[VideoPlayer::loadFile] Invalid arguments supplied!\n");
-        throw std::invalid_argument("FillFileBufferFunc should be a valid function");
-    }
-
-    fillFileBufferFunc = func;
-    customFileBufferFuncData = funcData;
-    this->cleanupFunc = cleanupFunc;
-
-    avioBuffer = (u_int8_t*)av_malloc(CUSTOMIO_BUFFER_SIZE);
-    avioContext = avio_alloc_context(avioBuffer, CUSTOMIO_BUFFER_SIZE, 0, (void*)this, &readFunction, NULL, NULL);
-
-    formatContext = avformat_alloc_context();
-    formatContext->pb = avioContext;
-
-    int err = avformat_open_input(&formatContext, "dummyFileName", NULL, NULL);if(err < 0) {
-        char error[1024];
-        av_strerror(err, error, 1024);
-        logError("[VideoPlayer::loadFile] Error opening file: %s\n", error);
-        throw std::runtime_error("Could not open file!");
+    if(debugLoggingActive) {
+        av_dump_format(formatContext, 0, filename, 0);
     }
     loadContainer(bufferInfo);
 }
 
 void VideoDecoder::loadContainer(VideoBufferInfo* bufferInfo) {
-    if(debugLoggingActive) {
-        //Print all available information about the streams inside of the file.
-        av_dump_format(formatContext, 0, "<input>", 0);
-    }
+    currentFrameDisplayed = 0;
+    totalFramesBuffered = 0;
 
     if (avformat_find_stream_info(formatContext, NULL) < 0) {
         logError("[VideoPlayer::loadFile] Could not find stream info!\n");
@@ -273,6 +230,7 @@ u_int8_t* VideoDecoder::nextVideoFrame() {
     if(videoOutputEnded) return NULL;
     if(!hasFrameBuffered()) {
         logDebug("[VideoPlayer::nextVideoFrame] no new frame available yet!\n");
+        if(totalFramesBuffered == 0) return NULL;
     } else {
         __sync_add_and_fetch(&currentFrameDisplayed, 1);
         decodeCondvar.signal();
@@ -448,10 +406,6 @@ void VideoDecoder::run() {
         decodeCondvar.wait();
     }
     decodeMutex.unlock();
-
-    if(cleanupFunc != NULL) {
-        cleanupFunc(this->customFileBufferFuncData);
-    }
 }
 
 int VideoDecoder::getVideoFrameSize()
@@ -465,14 +419,4 @@ bool VideoDecoder::hasFrameBuffered() {
 
 bool VideoDecoder::isBuffered() {
     return getNumBuffered() == (VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES - 1) || (videoOutputEnded && hasFrameBuffered());
-}
-
-FillFileBufferFunc VideoDecoder::getFillFileBufferFunc() const
-{
-    return fillFileBufferFunc;
-}
-
-void *VideoDecoder::getCustomFileBufferFuncData() const
-{
-    return customFileBufferFuncData;
 }

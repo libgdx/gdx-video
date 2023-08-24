@@ -126,6 +126,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		if (!file.exists()) {
 			throw new FileNotFoundException("Could not find file: " + file.path());
 		}
+		prepared = false;
 
 		// Wait for the player to be created. (If the Looper thread is busy,
 		if (player == null) {
@@ -153,10 +154,10 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 					fbo.dispose();
 					fbo = null;
 				}
-				if (pauseRequested) {
-					mp.setVolume(0f, 0f);
-				}
 				mp.start();
+				if (pauseRequested) {
+					mp.pause();
+				}
 			}
 		});
 		player.setOnErrorListener(new OnErrorListener() {
@@ -270,10 +271,6 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	@Override
 	public void onFrameAvailable (SurfaceTexture surfaceTexture) {
 		synchronized (this) {
-			if (pauseRequested) {
-				player.pause();
-				pauseRequested = false;
-			}
 			frameAvailable = true;
 		}
 	}
@@ -292,7 +289,6 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	public void resume () {
 		// If it is running
 		if (prepared) {
-			player.setVolume(currentVolume, currentVolume);
 			player.start();
 		}
 		pauseRequested = false;
@@ -324,17 +320,11 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
 	@Override
 	public int getVideoWidth () {
-		if (!prepared) {
-			throw new IllegalStateException("Can't get width when video is not yet buffered!");
-		}
 		return player.getVideoWidth();
 	}
 
 	@Override
 	public int getVideoHeight () {
-		if (!prepared) {
-			throw new IllegalStateException("Can't get height when video is not yet buffered!");
-		}
 		return player.getVideoHeight();
 	}
 
@@ -368,5 +358,4 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	public int getCurrentTimestamp () {
 		return player.getCurrentPosition();
 	}
-
 }

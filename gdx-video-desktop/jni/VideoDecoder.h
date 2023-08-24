@@ -39,7 +39,6 @@ extern "C"
 //It will always have 1 single empty element, which is used as protection for faster synchronization.
 #define VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES 4
 #define VIDEOPLAYER_AUDIO_BUFFER_SIZE 1024
-#define CUSTOMIO_BUFFER_SIZE 4096
 
 struct VideoBufferInfo {
     void* videoBuffer;
@@ -52,13 +51,6 @@ struct VideoBufferInfo {
     int audioChannels;
     int audioSampleRate;
 };
-
-/**
- *  The FillFileBufferFunc function will give a pointer to some data you gave to it, a buffer, and an integer representing
- *  the buffer's size. The function needs to return the amount of data that is filled into the buffer.
- */
-typedef int (*FillFileBufferFunc)(void*, uint8_t*, int);
-typedef void (*CleanupFunc)(void*);
 
 /**
  * @brief The VideoPlayer class is the base class which will handle everything needed to play a videofile.
@@ -83,7 +75,6 @@ public:
      * @return The size of the buffer
      */
     void loadFile(char* filename, VideoBufferInfo* bufferInfo);
-    void loadFile(FillFileBufferFunc func, void* funcData, CleanupFunc cleanupFunc, VideoBufferInfo* bufferInfo);
     /**
      * @brief fillBufferWithNextFrame This function will fill the buffers with the data of the next available frame
      * @return Whether a new frame was available
@@ -113,14 +104,11 @@ public:
      */
     bool isBuffered();
     bool hasFrameBuffered();
-    void *getCustomFileBufferFuncData() const;
-    FillFileBufferFunc getFillFileBufferFunc() const;
 private:
     int decodeAudio(void* audioBuffer, int buf_samples);
 
     AVChannelLayout audioChannelLayout;
     AVSampleFormat audioSampleFormat;
-    struct timespec timeout;
 
     bool readPacket();
 
@@ -135,8 +123,6 @@ private:
      */
     void loadContainer(VideoBufferInfo* bufferInfo);
 private:
-    // File I/O
-    AVIOContext* avioContext;
     // Parsing
     AVFormatContext* formatContext;
 
@@ -155,13 +141,6 @@ private:
     AVFrame* audioFrame;
     // Audio resampling
     SwrContext* swrContext;
-
-    //Owned by ffmpeg, don't clean
-    u_int8_t* avioBuffer;
-    //Don't do any cleanup for this. It does not own the data that is pointed to!
-    void* customFileBufferFuncData;
-    FillFileBufferFunc fillFileBufferFunc;
-    CleanupFunc cleanupFunc;
 
     /// Size of an RGB video frame buffer, in bytes
     int videoFrameSize;

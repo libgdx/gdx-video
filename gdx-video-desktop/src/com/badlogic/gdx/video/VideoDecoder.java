@@ -29,13 +29,13 @@ public class VideoDecoder implements Disposable {
 	private long nativePointer;
 
 	public static class VideoDecoderBuffers {
-		private ByteBuffer videoBuffer;
-		private ByteBuffer audioBuffer;
-		private int videoBufferWidth;
-		private int videoWidth;
-		private int videoHeight;
-		private int audioChannels;
-		private int audioSampleRate;
+		private final ByteBuffer videoBuffer;
+		private final ByteBuffer audioBuffer;
+		private final int videoBufferWidth;
+		private final int videoWidth;
+		private final int videoHeight;
+		private final int audioChannels;
+		private final int audioSampleRate;
 
 		// If constructor parameters are changed, please also update the native code to call the new constructor!
 		private VideoDecoderBuffers (ByteBuffer videoBuffer, ByteBuffer audioBuffer, int videoBufferWidth, int videoWidth,
@@ -116,48 +116,6 @@ public class VideoDecoder implements Disposable {
 	 	#include <stdexcept>
 
 	 	JavaVM* jvm = NULL;
-	 	JavaVMAttachArgs args;
-
-	 	struct FfMpegCustomFileReaderData {
-            jobject objectToCall;
-            jmethodID methodToCall;
-        };
-
-        static int ffmpegCustomFileReader(void* data, u_int8_t* buffer, int bufferSize) {
-            FfMpegCustomFileReaderData* customData = (FfMpegCustomFileReaderData*)data;
-            JNIEnv * env;
-		    // double check it's all ok
-		    int getEnvStat = jvm->GetEnv((void **)&env, JNI_VERSION_1_6);
-		    if (getEnvStat == JNI_EDETACHED) {
-		        logDebug("Not attached\n");
-		        if (jvm->AttachCurrentThread((void **) &env, NULL) != 0) {
-		            logError("Failed to attach\n");
-		        }
-		    } else if (getEnvStat == JNI_OK) {
-		        //
-		    } else if (getEnvStat == JNI_EVERSION) {
-		        logError("Unsupported version\n");
-		    }
-
-		jint integer = env->CallIntMethod(customData->objectToCall, customData->methodToCall, env->NewDirectByteBuffer(buffer, bufferSize));
-
-		    if (env->ExceptionCheck()) {
-		        env->ExceptionDescribe();
-		    }
-
-		    jvm->DetachCurrentThread();
-            logDebug("Size %d on %p\n", bufferSize, buffer);
-            return integer;
-        }
-
-        static void customReaderDataCleanup(void* data) {
-            FfMpegCustomFileReaderData* customData = (FfMpegCustomFileReaderData*)data;
-//            customData->env->DeleteGlobalRef(customData->objectToCall);
-//            jvm->DetachCurrentThread();
-//            customData->env = NULL;
-//            customData->objectToCall = NULL;
-//            customData->methodToCall = NULL;
-        }
 
 	 */
 
@@ -170,84 +128,27 @@ public class VideoDecoder implements Disposable {
             env->GetJavaVM(&jvm);
         }
 
-		args.version = JNI_VERSION_1_6;
-		args.name = "FFMpegInternalThread";
-
 		VideoDecoder* pointer = new VideoDecoder();
 		return (jlong)pointer;
 											 */
 
 	/** This will load a file for playback
 	 *
-	 * @param decodingObject The instance on which the next parameter should be used.
-	 * @param methodName The name of the function that should be called on the provided object. (The function should have return
-	 *           type int, and should accept a single ByteBuffer).
+	 * @param filePath The path to the file containing the video data.
 	 * @return A VideoDecoderBuffers object which contains all the information that may be needed about the video.
 	 * @throws IllegalArgumentException When the filename is invalid.
 	 * @throws Exception                Runtime exceptions in c++, which can have different causes.
 	 */
-	 public native VideoDecoderBuffers loadStream (Object decodingObject, String methodName)
-		 throws IllegalArgumentException, Exception;/*
-		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
-		try {
-			VideoBufferInfo bufferInfo;
-            memset(&bufferInfo, 0, sizeof(VideoBufferInfo));
-            FfMpegCustomFileReaderData* data = new FfMpegCustomFileReaderData();
-            memset(data, 0, sizeof(FfMpegCustomFileReaderData));
-            data->objectToCall = env->NewGlobalRef(decodingObject);
-            jclass clazz = env->GetObjectClass(data->objectToCall);
-            data->methodToCall = env->GetMethodID(clazz, methodName, "(Ljava/nio/ByteBuffer;)I");
-            if(data->methodToCall == NULL) {
-                delete data;
-                throw std::invalid_argument("Supplied method name invalid! Is it having the correct signature?");
-            }
-
-            pointer->loadFile(ffmpegCustomFileReader, data, customReaderDataCleanup, &bufferInfo);
-            jobject videoBuffer = NULL;
-            jobject audioBuffer = NULL;
-            jobject customIOBuffer = NULL;
-            if(bufferInfo.videoBuffer != NULL && bufferInfo.videoBufferSize > 0) {
-                videoBuffer = env->NewDirectByteBuffer(bufferInfo.videoBuffer, bufferInfo.videoBufferSize);
-            }
-            if(bufferInfo.audioBuffer != NULL && bufferInfo.audioBufferSize > 0) {
-                audioBuffer = env->NewDirectByteBuffer(bufferInfo.audioBuffer, bufferInfo.audioBufferSize);
-            }
-
-            jclass cls = env->FindClass("com/badlogic/gdx/video/VideoDecoder$VideoDecoderBuffers");
-            if(cls == NULL) {
-                logError("[wrapped_Java_com_badlogic_gdx_videoVideoDecoder_loadFile] Could not find VideoDecoderBuffers class");
-                return NULL;
-            }
-            jmethodID constructor = env->GetMethodID(cls, "<init>", "(Ljava/nio/ByteBuffer;Ljava/nio/ByteBuffer;IIIII)V");
-            return env->NewObject(cls, constructor, videoBuffer, audioBuffer, bufferInfo.videoBufferWidth, bufferInfo.videoWidth, bufferInfo.videoHeight, bufferInfo.audioChannels, bufferInfo.audioSampleRate);
-		} catch(std::runtime_error e) {
-			logDebug("Caught exception \n");
-			jclass clazz = env->FindClass("java/lang/Exception");
-			if(clazz == 0) { //Something went horribly wrong here...
-				return 0;
-			}
-			env->ThrowNew(clazz, e.what());
-		} catch(std::invalid_argument e) {
-			jclass clazz = env->FindClass("java/lang/IllegalArgumentException");
-			if(clazz == 0) { //Something went horribly wrong here...
-				return 0;
-			}
-			env->ThrowNew(clazz, e.what());
-		}
-		return 0;
-						 */
-
-	public native VideoDecoderBuffers loadFile (Object decodingObject, String fileName)
+	public native VideoDecoderBuffers loadFile (String filePath)
 			throws IllegalArgumentException, Exception;/*
 		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
 		try {
 			VideoBufferInfo bufferInfo;
             memset(&bufferInfo, 0, sizeof(VideoBufferInfo));
 
-            pointer->loadFile(fileName, &bufferInfo);
+            pointer->loadFile(filePath, &bufferInfo);
             jobject videoBuffer = NULL;
             jobject audioBuffer = NULL;
-            jobject customIOBuffer = NULL;
             if(bufferInfo.videoBuffer != NULL && bufferInfo.videoBufferSize > 0) {
                 videoBuffer = env->NewDirectByteBuffer(bufferInfo.videoBuffer, bufferInfo.videoBufferSize);
             }
@@ -309,10 +210,6 @@ public class VideoDecoder implements Disposable {
 	/** Disposes the native object. */
 	private native void disposeNative ();/*
 		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
-		FfMpegCustomFileReaderData* data = (FfMpegCustomFileReaderData*)pointer->getCustomFileBufferFuncData();
-        if(data != NULL) {
-            delete data;
-        }
 		delete pointer;
 														 */
 
