@@ -157,12 +157,9 @@ private:
     /// number of frames currently buffered ahead
     int getNumBuffered();
 
-    // decode mutex and condvar, signaled when new frames are requested
+    // decode mutex and condvar, signaled to wake up the decoding thread
     Mutex decodeMutex;
     CondVar decodeCondvar;
-    // display mutex and condvar, signaled when new frames are available
-    Mutex displayMutex;
-    CondVar displayCondvar;
 
     bool videoOutputEnded;
     std::list<AVPacket *> videoPackets;

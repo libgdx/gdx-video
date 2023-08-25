@@ -22,7 +22,7 @@
 
 #include <pthread.h>
 
-VideoDecoder::VideoDecoder() : decodeCondvar(decodeMutex), displayCondvar(displayMutex) {
+VideoDecoder::VideoDecoder() : decodeCondvar(decodeMutex) {
     fileLoaded = false;
     videoOutputEnded = false;
     audioOutputEnded = false;
@@ -53,6 +53,14 @@ VideoDecoder::VideoDecoder() : decodeCondvar(decodeMutex), displayCondvar(displa
 }
 
 VideoDecoder::~VideoDecoder() {
+    // Wake up and stop decoding thread
+    decodeMutex.lock();
+    videoOutputEnded = true;
+    audioOutputEnded = true;
+    decodeCondvar.signal();
+    decodeMutex.unlock();
+    join();
+
     //Take care of cleanup
     if(swrContext != NULL) {
         swr_free(&swrContext);
@@ -227,13 +235,14 @@ int VideoDecoder::getNumBuffered() {
 }
 
 u_int8_t* VideoDecoder::nextVideoFrame() {
-    if(videoOutputEnded) return NULL;
     if(!hasFrameBuffered()) {
+        if(videoOutputEnded || totalFramesBuffered == 0) return NULL;
         logDebug("[VideoPlayer::nextVideoFrame] no new frame available yet!\n");
-        if(totalFramesBuffered == 0) return NULL;
     } else {
+        decodeMutex.lock();
         __sync_add_and_fetch(&currentFrameDisplayed, 1);
         decodeCondvar.signal();
+        decodeMutex.unlock();
     }
 
     return rgbFrames[getReadIndex()]->data[0];
@@ -263,7 +272,9 @@ void VideoDecoder::updateAudioBuffer() {
                 memset(audioDecodingBuffer, 0, audioDecodedSize);
 
                 //Set an offset for the video, so that audio won't be behind
-                timestampOffset += secPerKbBlock;
+                if(!audioOutputEnded) {
+                    timestampOffset += secPerKbBlock;
+                }
             } else {
                 audioDecodedSize = size;
             }
@@ -357,8 +368,10 @@ bool VideoDecoder::readPacket() {
 
 void VideoDecoder::run() {
     decodeMutex.lock();
-    while(!videoOutputEnded) {
+    while(true) {
         while(!isBuffered() && !videoOutputEnded) {
+            decodeMutex.unlock();
+
             int ret = avcodec_receive_frame(videoCodecContext, frame);
             if(ret == AVERROR(EAGAIN)) {
                 // Get a new packet and send to decoder
@@ -399,9 +412,9 @@ void VideoDecoder::run() {
             //Atomic increment of totalFramesBuffered
             __sync_add_and_fetch(&totalFramesBuffered, 1);
 
-            // Send signal that new frames are available
-            displayCondvar.signal();
+            decodeMutex.lock();
         }
+        if(videoOutputEnded) break;
         // Wait for signal that new frames are requested
         decodeCondvar.wait();
     }
@@ -418,5 +431,5 @@ bool VideoDecoder::hasFrameBuffered() {
 }
 
 bool VideoDecoder::isBuffered() {
-    return getNumBuffered() == (VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES - 1) || (videoOutputEnded && hasFrameBuffered());
+    return (getNumBuffered() == VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES - 1) || (videoOutputEnded && hasFrameBuffered());
 }
