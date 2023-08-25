@@ -30,7 +30,7 @@ clean.configure {
 }
 
 String checkCrossPrefix(String crossToolchain) {
-    if (crossToolchain == null) return ""
+    if (crossToolchain == null || System.getProperty("os.name").startsWith("Win")) return ""
     def tc = crossToolchain
     def result = project.exec {
         ignoreExitValue = true
