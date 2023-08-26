@@ -37,7 +37,7 @@ public interface VideoPlayer extends Disposable {
 	}
 
 	/** This function will prepare the VideoPlayer to play the given file. If a video is already played, it will be stopped, and
-	 * the new video will be loaded.
+	 * the new video will be loaded. The video starts playing as soon as it is loaded.
 	 *
 	 * @throws FileNotFoundException if the file does not exist
 	 * @param file The file containing the video which should be played.

@@ -30,15 +30,15 @@ clean.configure {
 }
 
 String checkCrossPrefix(String crossToolchain) {
-    if (crossToolchain == null || System.getProperty("os.name").startsWith("Win")) return ""
     def tc = crossToolchain
+    if (tc == null || System.getProperty("os.name").startsWith("Win")) return ""
     def result = project.exec {
         ignoreExitValue = true
         commandLine "bash", "-l", "-c",
             "(command -v $tc-g++ && command -v $tc-ar && command -v $tc-ld)>/dev/null"
     }
     if(result.getExitValue() == 0) {
-        return "$crossToolchain-"
+        return "$tc-"
     }
     return ""
 }
@@ -69,7 +69,8 @@ void registerBuild(String buildName, String crossToolchain, String... extraArgs)
                 args '--enable-demuxer=ogg', '--enable-demuxer=matroska'
                 args '--enable-decoder=vorbis', '--enable-decoder=opus'
                 args '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-decoder=av1'
-                //args '--enable-demuxer=mov', '--enable-decoder=aac', '--enable-decoder=h264'
+                // Uncomment the following line for MP4 video support:
+                // args '--enable-demuxer=mov', '--enable-decoder=aac', '--enable-decoder=h264', '--enable-decoder=hevc'
                 args extraArgs
             }
             project.exec {

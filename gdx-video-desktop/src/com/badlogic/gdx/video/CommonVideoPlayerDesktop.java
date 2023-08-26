@@ -160,9 +160,8 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 			}
 
 			isFirstFrame = false;
-			long currentFrameTimestamp = (long)(decoder.getCurrentFrameTimestamp() * 1000.0);
 			long currentVideoTime = System.currentTimeMillis() - startTime;
-			long millisecondsAhead = currentFrameTimestamp - currentVideoTime;
+			long millisecondsAhead = (long)getCurrentTimestamp() - currentVideoTime;
 			showAlreadyDecodedFrame = millisecondsAhead > 20;
 			return newFrame;
 		}

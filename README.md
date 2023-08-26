@@ -95,9 +95,9 @@ if(player.isBuffered()) {
 ```
 
 On each frame, call the `update()` function to acquire new video frames
-and keep the audio running. You may then retrieve the frame using `getTexture()`,
+and keep the decoder running. You may then retrieve the frame using `getTexture()`,
 but note that the texture may be larger than the video itself. The provided
-`VideoActor` takes care of both tasks when using Scene2D.
+`VideoActor` takes care of both updating and drawing when using Scene2D.
 
 Once you are done playing, remember to `dispose()` the video player.
 
@@ -122,7 +122,7 @@ your game on real devices.
 #### Additional notes
 
 **Desktop:** Additional formats and codecs can be enabled when compiling 
-gdx-video yourself.
+gdx-video yourself. See the file [gdx-video-desktop/build.gradle](gdx-video-desktop/build.gradle).
 
 **iOS**: H.265 support notes from apple: <https://support.apple.com/de-de/HT207022>
 

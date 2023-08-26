@@ -14,8 +14,8 @@ android {
 			jniLibs.srcDirs = ['libs']
 		}
 	}
-    packagingOptions {
-        resources {
+	packagingOptions {
+		resources {
 			// Preventing from license violations (more or less):
 			pickFirsts += [
 				'META-INF/LICENSE.txt',
@@ -35,7 +35,7 @@ android {
 			]
 		}
     }
-    defaultConfig {
+	defaultConfig {
 		applicationId 'com.badlogic.gdx.video.test'
 		minSdkVersion project.minSdk
 		targetSdkVersion project.targetSdk
