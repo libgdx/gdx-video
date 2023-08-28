@@ -91,7 +91,6 @@ public class VideoPlayerIos implements VideoPlayer {
 	}
 
 	protected void onVideoTrackLoaded (AVAssetTrack track) {
-		System.out.print("Track " + track.getTrackID() + ": ");
 		List<? extends NativeObject> formatDescriptions = track.getFormatDescriptions();
 		videoTrack = track;
 		videoFormat = formatDescriptions.get(0).as(CMVideoFormatDescription.class);
@@ -99,17 +98,20 @@ public class VideoPlayerIos implements VideoPlayer {
 		if (videoSizeListener != null) {
 			videoSizeListener.onVideoSize(videoDimensions.getWidth(), videoDimensions.getHeight());
 		}
-		System.out.println(
-			"Video, " + CMVideoCodecType.valueOf(videoFormat.getMediaSubType()) + "@" + getVideoWidth() + "x" + getVideoHeight());
+		String message = "Track " + track.getTrackID() + ": Video, ";
+		message += CMVideoCodecType.valueOf(videoFormat.getMediaSubType());
+		message += " @ " + getVideoWidth() + "x" + getVideoHeight();
+		Gdx.app.debug("VideoPlayer", message);
 	}
 
 	protected void onAudioTrackLoaded (AVAssetTrack track) {
-		System.out.print("Track " + track.getTrackID() + ": ");
 		List<? extends NativeObject> formatDescriptions = track.getFormatDescriptions();
 		audioTrack = track;
 		audioFormat = formatDescriptions.get(0).as(CMAudioFormatDescription.class);
 		AudioStreamBasicDescription asbd = audioFormat.getFormatList().getASBD();
-		System.out.println("Audio, " + asbd.getFormat() + "@" + (asbd.getSampleRate() / 1000) + "kHz");
+		String message = "Track " + track.getTrackID() + ": Audio, ";
+		message += asbd.getFormat() + " @ " + (asbd.getSampleRate() / 1000) + "kHz";
+		Gdx.app.debug("VideoPlayer", message);
 	}
 
 	private void onPlayerReady () {
@@ -135,6 +137,8 @@ public class VideoPlayerIos implements VideoPlayer {
 		dispose();
 
 		if (!file.exists()) return false;
+
+		Gdx.app.debug("VideoPlayer", "Loading file " + file.path() + " ...");
 		this.file = file;
 		NSURL fileUrl = new NSURL(file.file());
 		asset = new AVAsset(fileUrl);
@@ -165,7 +169,8 @@ public class VideoPlayerIos implements VideoPlayer {
 			@Override
 			public void observeValue (String keyPath, NSObject object, NSKeyValueChangeInfo change) {
 				AVPlayer player = object.as(AVPlayer.class);
-				System.out.println("Player status is " + player.getStatus() + ".");
+				String message = "Player status is now " + player.getStatus() + ".";
+				Gdx.app.debug("VideoPlayer", message);
 				if (!playerIsReady && player.getStatus() == AVPlayerStatus.ReadyToPlay) {
 					playerIsReady = true;
 					onPlayerReady();
