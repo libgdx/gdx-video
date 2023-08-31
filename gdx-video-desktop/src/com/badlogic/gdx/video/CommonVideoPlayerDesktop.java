@@ -16,12 +16,8 @@
 
 package com.badlogic.gdx.video;
 
-import java.io.BufferedInputStream;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Music;
@@ -42,13 +38,13 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 	long startTime = 0;
 	boolean showAlreadyDecodedFrame = false;
 
-	BufferedInputStream inputStream;
-	ReadableByteChannel fileChannel;
-
 	boolean paused = false;
+	boolean looping = false;
+	boolean isFirstFrame = true;
 	long timeBeforePause = 0;
 
 	int currentVideoWidth, currentVideoHeight;
+	int videoBufferWidth;
 	VideoSizeListener sizeListener;
 	CompletionListener completionListener;
 	FileHandle currentFile;
@@ -59,6 +55,14 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 	}
 
 	abstract Music createMusic (VideoDecoder decoder, ByteBuffer audioBuffer, int audioChannels, int sampleRate);
+
+	private int getTextureWidth () {
+		return videoBufferWidth;
+	}
+
+	private int getTextureHeight () {
+		return currentVideoHeight;
+	}
 
 	@Override
 	public boolean play (FileHandle file) throws FileNotFoundException {
@@ -80,13 +84,11 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 			stop();
 		}
 
-		inputStream = file.read(1024 * 1024);
-		fileChannel = Channels.newChannel(inputStream);
-
+		isFirstFrame = true;
 		decoder = new VideoDecoder();
 		VideoDecoderBuffers buffers;
 		try {
-			buffers = decoder.loadStream(this, "readFileContents");
+			buffers = decoder.loadFile(file.path());
 
 			if (buffers != null) {
 				ByteBuffer audioBuffer = buffers.getAudioBuffer();
@@ -96,7 +98,8 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 				}
 				currentVideoWidth = buffers.getVideoWidth();
 				currentVideoHeight = buffers.getVideoHeight();
-				if (texture != null && (texture.getWidth() != currentVideoWidth || texture.getHeight() != currentVideoHeight)) {
+				videoBufferWidth = buffers.getVideoBufferWidth();
+				if (texture != null && (texture.getWidth() != getTextureWidth() || texture.getHeight() != getTextureHeight())) {
 					texture.dispose();
 					texture = null;
 				}
@@ -116,25 +119,10 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 		return true;
 	}
 
-	/** Called by jni to fill in the file buffer.
-	 *
-	 * @param buffer The buffer that needs to be filled
-	 * @return The amount that has been filled into the buffer. */
-	@SuppressWarnings("unused")
-	private int readFileContents (ByteBuffer buffer) {
-		try {
-			buffer.rewind();
-			return fileChannel.read(buffer);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return 0;
-	}
-
 	@Override
 	public boolean update () {
-		if (decoder != null && !paused && playing) {
-			if (startTime == 0) {
+		if (decoder != null && (!paused || isFirstFrame) && playing) {
+			if (!paused && startTime == 0) {
 				// Since startTime is 0, this means that we should now display the first frame of the video, and set the
 				// time.
 				startTime = System.currentTimeMillis();
@@ -147,11 +135,21 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 			if (!showAlreadyDecodedFrame) {
 				ByteBuffer videoData = decoder.nextVideoFrame();
 				if (videoData != null) {
-					if (texture == null) texture = new Texture(currentVideoWidth, currentVideoHeight, Format.RGB888);
+					if (texture == null) texture = new Texture(getTextureWidth(), getTextureHeight(), Format.RGB888);
 					texture.bind();
-					Gdx.gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, currentVideoWidth, currentVideoHeight, 0, GL20.GL_RGB,
+					Gdx.gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, getTextureWidth(), getTextureHeight(), 0, GL20.GL_RGB,
 						GL20.GL_UNSIGNED_BYTE, videoData);
 					newFrame = true;
+				} else if (isFirstFrame) {
+					return false;
+				} else if (looping) {
+					try {
+						// NOTE: this just creates a new decoder instead of reusing the existing one.
+						play(currentFile);
+					} catch (FileNotFoundException e) {
+						throw new RuntimeException(e);
+					}
+					return false;
 				} else {
 					playing = false;
 					if (completionListener != null) {
@@ -161,14 +159,10 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 				}
 			}
 
-			showAlreadyDecodedFrame = false;
-			long currentFrameTimestamp = (long)(decoder.getCurrentFrameTimestamp() * 1000);
-			long currentVideoTime = (System.currentTimeMillis() - startTime);
-			int difference = (int)(currentFrameTimestamp - currentVideoTime);
-			if (difference > 20) {
-				// Difference is more than a frame, draw this one twice
-				showAlreadyDecodedFrame = true;
-			}
+			isFirstFrame = false;
+			long currentVideoTime = System.currentTimeMillis() - startTime;
+			long millisecondsAhead = (long)getCurrentTimestamp() - currentVideoTime;
+			showAlreadyDecodedFrame = millisecondsAhead > 20;
 			return newFrame;
 		}
 		return false;
@@ -200,25 +194,14 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 			audio.dispose();
 			audio = null;
 		}
-		if (texture != null) {
-			texture.dispose();
-			texture = null;
-		}
 		if (decoder != null) {
 			decoder.dispose();
 			decoder = null;
 		}
-		if (inputStream != null) {
-			try {
-				inputStream.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			inputStream = null;
-		}
 
 		startTime = 0;
 		showAlreadyDecodedFrame = false;
+		isFirstFrame = true;
 	}
 
 	@Override
@@ -228,7 +211,11 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 			if (audio != null) {
 				audio.pause();
 			}
-			timeBeforePause = System.currentTimeMillis() - startTime;
+			if (startTime != 0L) {
+				timeBeforePause = System.currentTimeMillis() - startTime;
+			} else {
+				timeBeforePause = 0L;
+			}
 		}
 	}
 
@@ -246,6 +233,10 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 	@Override
 	public void dispose () {
 		stop();
+		if (texture != null) {
+			texture.dispose();
+			texture = null;
+		}
 	}
 
 	@Override
@@ -285,12 +276,12 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 
 	@Override
 	public void setLooping (boolean looping) {
-		// TODO
+		this.looping = looping;
 	}
 
 	@Override
 	public boolean isLooping () {
-		return false;
+		return looping;
 	}
 
 	@Override

@@ -83,6 +83,11 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
 	private MediaPlayer player;
 	private boolean prepared = false;
+	/** Whether the video was requested to stay paused after loading
+	 *
+	 * To achieve this and still load the first video frame properly, we play the video muted until the first frame is available,
+	 * and then pause. */
+	private boolean pauseRequested = false;
 	private boolean frameAvailable = false;
 	/** If the external should be drawn to the fbo and make it available thru {@link #getTexture()} */
 	public boolean renderToFbo = true;
@@ -121,6 +126,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		if (!file.exists()) {
 			throw new FileNotFoundException("Could not find file: " + file.path());
 		}
+		prepared = false;
 
 		// Wait for the player to be created. (If the Looper thread is busy,
 		if (player == null) {
@@ -149,6 +155,9 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 					fbo = null;
 				}
 				mp.start();
+				if (pauseRequested) {
+					mp.pause();
+				}
 			}
 		});
 		player.setOnErrorListener(new OnErrorListener() {
@@ -162,6 +171,8 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		player.setOnCompletionListener(new OnCompletionListener() {
 			@Override
 			public void onCompletion (MediaPlayer mp) {
+				if (isLooping()) return;
+				prepared = false;
 				if (completionListener != null) {
 					completionListener.onCompletionListener(file);
 				}
@@ -271,6 +282,8 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		// If it is running
 		if (prepared) {
 			player.pause();
+		} else {
+			pauseRequested = true;
 		}
 	}
 
@@ -280,6 +293,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		if (prepared) {
 			player.start();
 		}
+		pauseRequested = false;
 	}
 
 	@Override
@@ -308,17 +322,11 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
 	@Override
 	public int getVideoWidth () {
-		if (!prepared) {
-			throw new IllegalStateException("Can't get width when video is not yet buffered!");
-		}
 		return player.getVideoWidth();
 	}
 
 	@Override
 	public int getVideoHeight () {
-		if (!prepared) {
-			throw new IllegalStateException("Can't get height when video is not yet buffered!");
-		}
 		return player.getVideoHeight();
 	}
 
@@ -352,5 +360,4 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 	public int getCurrentTimestamp () {
 		return player.getCurrentPosition();
 	}
-
 }

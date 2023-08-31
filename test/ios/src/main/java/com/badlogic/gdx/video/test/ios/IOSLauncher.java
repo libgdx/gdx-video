@@ -19,16 +19,25 @@ package com.badlogic.gdx.video.test.ios;
 import org.robovm.apple.foundation.NSAutoreleasePool;
 import org.robovm.apple.uikit.UIApplication;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.iosrobovm.IOSApplication;
 import com.badlogic.gdx.backends.iosrobovm.IOSApplicationConfiguration;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.video.test.GdxVideoTest;
 
 /** Launches the iOS (RoboVM) application. */
 public class IOSLauncher extends IOSApplication.Delegate {
+	public static class IosGdxVideoTest extends GdxVideoTest {
+		@Override
+		protected FileHandle getVideoFile () {
+			return Gdx.files.internal("libGDX - It's Good For You!.mp4");
+		}
+	}
+
 	@Override
 	protected IOSApplication createApplication () {
 		IOSApplicationConfiguration configuration = new IOSApplicationConfiguration();
-		return new IOSApplication(new GdxVideoTest(), configuration);
+		return new IOSApplication(new IosGdxVideoTest(), configuration);
 	}
 
 	public static void main (String[] argv) {

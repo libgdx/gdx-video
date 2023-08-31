@@ -60,7 +60,6 @@ public class FfMpeg {
 			return false;
 		}
 		loaded = true;
-		register();
 		return true;
 	}
 
@@ -86,20 +85,7 @@ public class FfMpeg {
 	 */
 
 	/*JNI
-	 	extern "C"
-	 	{
-	 	//This makes certain C libraries usable for ffmpeg
-	 	#define __STDC_CONSTANT_MACROS
-		#include <libavcodec/avcodec.h>
-		#include <libavformat/avformat.h>
-		#include <libswscale/swscale.h>
-		}
 		#include "Utilities.h"
-	 */
-
-	 private native static void register ();/*
-		av_register_all();
-		logDebug("av_register_all() called\n");
 	 */
 
 	 /**

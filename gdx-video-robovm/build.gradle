@@ -1,0 +1,33 @@
+apply plugin: "java-library"
+
+apply from: '../publish.gradle'
+
+configurations {
+    custom
+    compile.extendsFrom custom
+}
+
+targetCompatibility = 1.7
+sourceCompatibility = 1.7
+
+sourceSets {
+    main {
+        java {
+            srcDir 'src/'
+        }
+        resources {
+            srcDir 'res/'
+        }
+    }
+}
+
+dependencies {
+    api project(":gdx-video-core")
+    compileOnly "com.badlogicgames.gdx:gdx-backend-robovm:$gdxVersion"
+    implementation "com.mobidevelop.robovm:robovm-rt:$robovmVersion"
+    implementation "com.mobidevelop.robovm:robovm-cocoatouch:$robovmVersion"
+}
+
+eclipse.project {
+    name = projectGroup + "-core"
+}

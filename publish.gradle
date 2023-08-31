@@ -1,50 +1,52 @@
-apply plugin: 'maven'
+apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
-afterEvaluate { project ->
-    uploadArchives {
-        repositories {
-            mavenDeployer {
-                beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+afterEvaluate {
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                artifactId = archivesBaseName ?: project.name
 
-                if (isLocalBuild()) {
-                    repository(url: getLocalRepositoryUrl())
-                } else if (isReleaseBuild()) {
-                    repository(url: getReleaseRepositoryUrl()) {
-                        authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
-                    }
-                } else {
-                    snapshotRepository(url: getSnapshotRepositoryUrl()) {
-                        authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
-                    }
-                }
-
-
-                pom.project {
-                    name rootProject.name
-                    description 'Video Extension for libGDX'
-                    url 'https://github.com/libgdx/gdx-video'
+                pom {
+                    name.set(POM_NAME)
+                    description.set(POM_DESCRIPTION)
+                    url.set(POM_URL)
 
                     scm {
-                        url 'scm:git@github.com:libgdx/gdx-video.git'
-                        connection 'scm:git@github.com:libgdx/gdx-video.git'
-                        developerConnection 'scm:git@github.com:libgdx/gdx-video.git'
+                        url.set(POM_SCM_URL)
+                        connection.set(POM_SCM_CONNECTION)
+                        developerConnection.set(POM_SCM_DEV_CONNECTION)
                     }
 
                     licenses {
                         license {
-                            name 'The Apache Software License, Version 2.0'
-                            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                            distribution 'repo'
+                            name.set(POM_LICENCE_NAME)
+                            url.set(POM_LICENCE_URL)
+                            distribution.set(POM_LICENCE_DIST)
                         }
                     }
 
                     developers {
                         developer {
-                            id 'SimonIT'
-                            name 'Simon Bullik'
-                            email 'simonit.orig@gmail.com'
+                            id.set('SimonIT')
+                            name.set('Simon Bullik')
+                            email.set('simonit.orig@gmail.com')
                         }
+                    }
+                }
+
+                from components.java
+            }
+        }
+
+        repositories {
+            maven {
+                url = version.endsWith('SNAPSHOT') ? getSnapshotRepositoryUrl() : getReleaseRepositoryUrl()
+
+                if (getRepositoryUsername() || getRepositoryPassword()) {
+                    credentials {
+                        username = getRepositoryUsername()
+                        password = getRepositoryPassword()
                     }
                 }
             }
@@ -56,35 +58,11 @@ afterEvaluate { project ->
             useGpgCmd()
         }
         required { isReleaseBuild() }
-        sign configurations.archives
+        sign publishing.publications.mavenJava
     }
+}
 
-    task libraryJar(type: Jar, dependsOn: classes) {
-        from sourceSets.main.output.classesDirs
-        from configurations.custom.collect { it.isDirectory() ? it : zipTree(it) }
-        classifier = 'library'
-    }
-
-    task sourcesJar(type: Jar, dependsOn: classes) {
-        from sourceSets.main.allSource
-        classifier = 'sources'
-    }
-
-    task javadocJar(type: Jar, dependsOn: javadoc) {
-        from javadoc.destinationDir
-        classifier = 'javadoc'
-    }
-
-    task nativesJar(type: Jar, dependsOn: classes) {
-        from fileTree("libs").files
-        classifier = 'natives'
-    }
-
-    artifacts {
-        //archives libraryJar
-        //archives nativesJar
-        archives sourcesJar
-        archives javadocJar
-    }
-
+java {
+    withSourcesJar()
+    withJavadocJar()
 }

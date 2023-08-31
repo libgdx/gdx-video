@@ -1,4 +1,3 @@
-
 buildscript {
 	repositories {
 		maven {
@@ -6,9 +5,10 @@ buildscript {
 		}
 	}
 	dependencies {
-		classpath 'org.gretty:gretty:3.0.3'
+		classpath 'org.gretty:gretty:3.0.7'
 	}
 }
+
 apply plugin: "gwt"
 apply plugin: "war"
 apply plugin: "org.gretty"
@@ -33,7 +33,6 @@ dependencies {
 	implementation "com.badlogicgames.gdx:gdx:$gdxVersion:sources"
 	implementation "com.badlogicgames.gdx:gdx-backend-gwt:$gdxVersion"
 	implementation "com.badlogicgames.gdx:gdx-backend-gwt:$gdxVersion:sources"
-
 }
 
 import org.akhikhl.gretty.AppBeforeIntegrationTestTask
@@ -44,7 +43,8 @@ gretty.resourceBase = project.buildDir.path + "/gwt/draftOut"
 gretty.contextPath = "/"
 gretty.portPropertiesFileName = "TEMP_PORTS.properties"
 
-task startHttpServer (dependsOn: [draftCompileGwt]) {
+tasks.register('startHttpServer') {
+	dependsOn 'draftCompileGwt'
 	doFirst {
 		copy {
 			from "webapp"
@@ -56,9 +56,11 @@ task startHttpServer (dependsOn: [draftCompileGwt]) {
 		}
 	}
 }
-task beforeRun(type: AppBeforeIntegrationTestTask, dependsOn: startHttpServer) {
-    // The next line allows ports to be reused instead of
-    // needing a process to be manually terminated.
+
+task beforeRun (type: AppBeforeIntegrationTestTask) {
+	dependsOn 'startHttpServer'
+	// The next line allows ports to be reused instead of
+	// needing a process to be manually terminated.
 	file("build/TEMP_PORTS.properties").delete()
 	// Somewhat of a hack; uses Gretty's support for wrapping a task in
 	// a start and then stop of a Jetty server that serves files while
@@ -68,13 +70,15 @@ task beforeRun(type: AppBeforeIntegrationTestTask, dependsOn: startHttpServer) {
 	interactive false
 }
 
-task superDev(type: GwtSuperDev) {
+tasks.register('superDev', GwtSuperDev) {
+	dependsOn 'startHttpServer'
 	doFirst {
 		gwt.modules = gwt.devModules
 	}
 }
-task dist(dependsOn: [clean, compileGwt]) {
-    doLast {
+tasks.register('dist') {
+	dependsOn 'clean', 'compileGwt'
+	doLast {
 		file("build/dist").mkdirs()
 		copy {
 			from "build/gwt/out"
@@ -83,7 +87,7 @@ task dist(dependsOn: [clean, compileGwt]) {
 		copy {
 			from "webapp"
 			into "build/dist"
-			}
+		}
 		copy {
 			from "war"
 			into "build/dist"
@@ -91,13 +95,12 @@ task dist(dependsOn: [clean, compileGwt]) {
 	}
 }
 
-task addSource {
+tasks.register('addSource') {
 	doLast {
 		sourceSets.main.compileClasspath += files(project(':gdx-video-core').sourceSets.main.allJava.srcDirs)
 		sourceSets.main.compileClasspath += files(project(':gdx-video-gwt').sourceSets.main.allJava.srcDirs)
 		sourceSets.main.compileClasspath += files(project(':gdx-video-gwt').sourceSets.main.resources.srcDirs)
 		sourceSets.main.compileClasspath += files(project(':test:core').sourceSets.main.allJava.srcDirs)
-
 	}
 }
 

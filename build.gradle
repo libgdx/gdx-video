@@ -4,6 +4,7 @@ buildscript {
     repositories {
         mavenLocal()
         mavenCentral()
+        gradlePluginPortal()
         google()
         maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
     }
@@ -11,12 +12,12 @@ buildscript {
         classpath "org.wisepersist:gwt-gradle-plugin:$gwtPluginVersion"
         classpath "com.android.tools.build:gradle:$androidPluginVersion"
         classpath "com.mobidevelop.robovm:robovm-gradle-plugin:$robovmVersion"
-        classpath "com.badlogicgames.gdx:gdx-jnigen-gradle:2.0.1"
+        classpath "com.badlogicgames.gdx:gdx-jnigen-gradle:2.4.1"
     }
 }
 
 plugins {
-    id "com.diffplug.spotless" version "5.3.0"
+    id "com.diffplug.spotless" version "6.7.1"
 }
 
 ext {
@@ -28,10 +29,10 @@ allprojects {
     apply plugin: 'idea'
 
     ext {
-        minSdk = 16
-        targetSdk = 30
-        compileSdk = 30
-        buildTools = '30.0.3'
+        minSdk = 17
+        targetSdk = 32
+        compileSdk = 32
+        buildTools = '33.0.0'
 
         isReleaseBuild = {
             return project.hasProperty("RELEASE")
@@ -68,17 +69,18 @@ allprojects {
     repositories {
         mavenLocal()
         mavenCentral()
-        maven { url "https://oss.sonatype.org/content/repositories/releases/" }
-        maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
+        gradlePluginPortal()
+        google()
+        maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
     }
 
     version project.getProperty('version') + (isReleaseBuild() ? "" : "-SNAPSHOT")
 
-    tasks.withType(JavaCompile) {
+    tasks.withType(JavaCompile).configureEach {
         options.encoding = 'UTF-8'
     }
 
-    tasks.withType(Test) {
+    tasks.withType(Test).configureEach {
         systemProperty 'file.encoding', 'UTF-8'
     }
 }
@@ -92,7 +94,7 @@ subprojects {
         java {
             target 'src/**/*.java'
             licenseHeader '/*******************************************************************************\n' +
-                    ' * Copyright 2014 See AUTHORS file.\n' +
+                    ' * Copyright $YEAR See AUTHORS file.\n' +
                     ' *\n' +
                     ' * Licensed under the Apache License, Version 2.0 (the "License");\n' +
                     ' * you may not use this file except in compliance with the License.\n' +

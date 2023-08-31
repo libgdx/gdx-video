@@ -1,17 +1,18 @@
 apply plugin: 'com.android.library'
 
-repositories {
-    google()
-    maven { url "https://plugins.gradle.org/m2/" }
-}
-
 android {
-    compileSdkVersion compileSdk
-    buildToolsVersion "${buildTools}"
+    namespace = 'com.badlogicgames.gdx_video'
+
+    compileSdkVersion = project.compileSdk
+    buildToolsVersion = project.buildTools
 
     defaultConfig {
-        minSdkVersion minSdk
-        targetSdkVersion targetSdk
+        aarMetadata {
+            minCompileSdk = 31
+        }
+
+        minSdkVersion project.minSdk
+        targetSdkVersion project.targetSdk
     }
 
     sourceSets {

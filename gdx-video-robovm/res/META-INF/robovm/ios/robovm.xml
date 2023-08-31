@@ -1,0 +1,8 @@
+<config>
+    <frameworks>
+        <framework>AVFoundation</framework>
+    </frameworks>
+    <forceLinkClasses>
+        <pattern>com.badlogic.gdx.video.VideoPlayerIos</pattern>
+    </forceLinkClasses>
+</config>

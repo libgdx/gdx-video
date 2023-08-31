@@ -22,10 +22,10 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.video.VideoPlayer;
 import com.badlogic.gdx.video.VideoPlayerCreator;
+import com.badlogic.gdx.video.scenes.scene2d.VideoActor;
 
 import java.io.FileNotFoundException;
 
@@ -34,6 +34,11 @@ public class GdxVideoTest extends ApplicationAdapter {
 	SpriteBatch batch;
 	OrthographicCamera camera;
 	VideoPlayer videoPlayer;
+	VideoActor videoActor;
+
+	protected FileHandle getVideoFile () {
+		return Gdx.files.internal("libGDX - It's Good For You!.webm");
+	}
 
 	@Override
 	public void create () {
@@ -53,13 +58,16 @@ public class GdxVideoTest extends ApplicationAdapter {
 				Gdx.app.log("VideoTest", "The video has a size of " + width + "x" + height + ".");
 			}
 		});
+
+		videoActor = new VideoActor(videoPlayer);
+		videoActor.setBounds(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 	}
 
 	@Override
 	public void render () {
 		if (Gdx.input.justTouched()) {
 			try {
-				videoPlayer.play(Gdx.files.internal("libGDX - It's Good For You!.webm"));
+				videoPlayer.play(getVideoFile());
 			} catch (FileNotFoundException e) {
 				Gdx.app.error("gdx-video", "Oh no!");
 			}
@@ -67,10 +75,11 @@ public class GdxVideoTest extends ApplicationAdapter {
 
 		Gdx.gl.glClearColor(0, 0, 0, 0);
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-		videoPlayer.update();
+
+		videoActor.act(Gdx.graphics.getDeltaTime());
+
 		batch.begin();
-		Texture frame = videoPlayer.getTexture();
-		if (frame != null) batch.draw(frame, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+		videoActor.draw(batch, 1f);
 		batch.end();
 	}
 

@@ -38,7 +38,7 @@ public:
         return pthread_cond_wait(&cond, &(lock.mutex));
     }
     int wait(const timespec * timeout) {
-        return  pthread_cond_timedwait(&cond, &(lock.mutex), timeout);
+        return pthread_cond_timedwait(&cond, &(lock.mutex), timeout);
     }
     int signal() {
         return pthread_cond_signal(&cond);
