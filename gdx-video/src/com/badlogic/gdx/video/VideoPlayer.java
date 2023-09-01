@@ -20,6 +20,7 @@ import java.io.FileNotFoundException;
 
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.Null;
 
@@ -124,4 +125,8 @@ public interface VideoPlayer extends Disposable {
 	void setLooping (boolean looping);
 
 	boolean isLooping ();
+
+	/** This sets the texture filtering used for displaying the video on screen.
+	 * @see Texture#setFilter(TextureFilter minFilter, TextureFilter magFilter) */
+	void setFilter (TextureFilter minFilter, TextureFilter magFilter);
 }

@@ -24,7 +24,7 @@ import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.utils.Null;
 import com.google.gwt.media.client.Video;
 
-public class VideoPlayerGwt implements VideoPlayer {
+public class VideoPlayerGwt extends AbstractVideoPlayer implements VideoPlayer {
 	private FileHandle currentFile;
 	private final Video v = Video.createIfSupported();
 	private Texture frame;
@@ -59,7 +59,10 @@ public class VideoPlayerGwt implements VideoPlayer {
 					frame.dispose();
 					frame = null;
 				}
-				if (frame == null) frame = new Texture(width, height, Pixmap.Format.RGB888);
+				if (frame == null) {
+					frame = new Texture(width, height, Pixmap.Format.RGB888);
+					frame.setFilter(minFilter, magFilter);
+				}
 				frame.bind();
 				((GwtGL20)Gdx.gl).gl.texImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, GL20.GL_RGB, GL20.GL_UNSIGNED_BYTE,
 					v.getVideoElement());

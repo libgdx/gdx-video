@@ -57,7 +57,7 @@ import java.util.List;
 /** iOS implementation of the VideoPlayer class.
  *
  * @author Maximilian Wende &lt;dasisdormax@mailbox.org&gt; */
-public class VideoPlayerIos implements VideoPlayer {
+public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 
 	protected FileHandle file;
 	protected AVAsset asset;
@@ -203,6 +203,7 @@ public class VideoPlayerIos implements VideoPlayer {
 		int texHeight = (int)(pixelBuffer.getDataSize() / bpr);
 		if (texture == null) {
 			texture = new Texture(texWidth, texHeight, Pixmap.Format.RGB888);
+			texture.setFilter(minFilter, magFilter);
 		}
 		texture.bind();
 		pixelBuffer.lockBaseAddress(CVPixelBufferLockFlags.ReadOnly);
