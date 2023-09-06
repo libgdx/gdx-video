@@ -1,6 +1,6 @@
 # GDX-Video
 
-![GitHub Workflow Status (master)](https://img.shields.io/github/workflow/status/libgdx/gdx-video/Publish%20Snapshot/master?label=master)
+![GitHub Workflow Status (master)](https://img.shields.io/github/actions/workflow/status/libgdx/gdx-video/publish_snapshot.yml?branch=master)
 
 [![Sonatype Nexus (Releases)](https://img.shields.io/nexus/r/com.badlogicgames.gdx-video/gdx-video?nexusVersion=2&server=https%3A%2F%2Foss.sonatype.org&label=release)](https://search.maven.org/artifact/com.badlogicgames.gdx-video/gdx-video)
 [![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/com.badlogicgames.gdx-video/gdx-video?server=https%3A%2F%2Foss.sonatype.org&label=snapshot)](https://oss.sonatype.org/#nexus-search;gav~com.badlogicgames.gdx-video~gdx-video~~~~kw,versionexpand)
