@@ -51,7 +51,7 @@ import java.io.IOException;
  * @author Rob Bogie &lt;rob.bogie@codepoke.net&gt; */
 public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlayer, OnFrameAvailableListener {
 	//@off
-	String vertexShaderCode =
+	static final String vertexShaderCode =
 			"#define highp\n" +
 					"attribute highp vec4 a_position; \n" +
 					"attribute highp vec2 a_texCoord0;" +
@@ -63,7 +63,7 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 					" v_texCoord0 = a_texCoord0;\n" +
 					"} \n";
 
-	String fragmentShaderCode =
+	static final String fragmentShaderCode =
 			"#extension GL_OES_EGL_image_external : require\n" +
 					"uniform samplerExternalOES u_sampler0;" +
 					"varying highp vec2 v_texCoord0;" +
@@ -73,22 +73,51 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 					"}";
 	//@on
 
-	private final ShaderProgram shader = new ShaderProgram(vertexShaderCode, fragmentShaderCode);
+	private void setupStep () {
+		if (stopped || setupRenderer()) return;
+		queueSetupStep();
+	}
+
+	private boolean setupRenderer () {
+		if (surface != null) {
+			return true;
+		}
+		if (renderer == null) {
+			shader = new ShaderProgram(vertexShaderCode, fragmentShaderCode);
+			renderer = new ImmediateModeRenderer20(4, false, false, 1, shader);
+			transform = new Matrix4().setToOrtho2D(0, 0, 1, 1);
+		} else if (initialized) {
+			videoTexture.setOnFrameAvailableListener(this);
+			surface = new Surface(videoTexture);
+			player.setSurface(surface);
+		}
+		return false;
+	}
+
+	private void queueSetupStep () {
+		Gdx.app.postRunnable(new Runnable() {
+			@Override
+			public void run () {
+				setupStep();
+			}
+		});
+	}
+
+	private ShaderProgram shader;
 	private Matrix4 transform;
 	private final int[] textures = new int[1];
 	private SurfaceTexture videoTexture;
+	private Surface surface;
 	private FrameBuffer fbo;
 	private Texture frame;
 	private ImmediateModeRenderer20 renderer;
 
 	private MediaPlayer player;
+	private volatile boolean initialized = false;
 	private boolean prepared = false;
-	/** Whether the video was requested to stay paused after loading
-	 *
-	 * To achieve this and still load the first video frame properly, we play the video muted until the first frame is available,
-	 * and then pause. */
+	private boolean stopped = false;
 	private boolean pauseRequested = false;
-	private boolean frameAvailable = false;
+	private volatile boolean frameAvailable = false;
 	/** If the external should be drawn to the fbo and make it available thru {@link #getTexture()} */
 	public boolean renderToFbo = true;
 
@@ -103,8 +132,8 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 	final Object lock = new Object();
 
 	public VideoPlayerAndroid () {
-		setupRenderTexture();
 		initializeMediaPlayer();
+		queueSetupStep();
 	}
 
 	private void initializeMediaPlayer () {
@@ -113,10 +142,9 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 		handler.post(new Runnable() {
 			@Override
 			public void run () {
-				synchronized (lock) {
-					player = new MediaPlayer();
-					lock.notify();
-				}
+				player = new MediaPlayer();
+				videoTexture = new SurfaceTexture(textures[0]);
+				initialized = true;
 			}
 		});
 	}
@@ -126,19 +154,25 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 		if (!file.exists()) {
 			throw new FileNotFoundException("Could not find file: " + file.path());
 		}
-		prepared = false;
 
-		// Wait for the player to be created. (If the Looper thread is busy,
-		if (player == null) {
-			synchronized (lock) {
-				while (player == null) {
+		prepared = false;
+		frame = null;
+		stopped = false;
+
+		// If we haven't finished loading the media player yet, wait without blocking.
+		if (!initialized) {
+			Gdx.app.postRunnable(new Runnable() {
+				@Override
+				public void run () {
+					if (stopped) return;
 					try {
-						lock.wait();
-					} catch (InterruptedException e) {
-						return false;
+						play(file);
+					} catch (FileNotFoundException e) {
+						throw new RuntimeException(e);
 					}
 				}
-			}
+			});
+			return true;
 		}
 
 		player.reset();
@@ -146,18 +180,27 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 		player.setOnPreparedListener(new OnPreparedListener() {
 			@Override
 			public void onPrepared (MediaPlayer mp) {
-				prepared = true;
 				if (sizeListener != null) {
 					sizeListener.onVideoSize(mp.getVideoWidth(), mp.getVideoHeight());
 				}
-				if (fbo != null && (fbo.getWidth() != mp.getVideoWidth() || fbo.getHeight() != mp.getVideoHeight())) {
-					fbo.dispose();
-					fbo = null;
-				}
-				mp.start();
-				if (pauseRequested) {
-					mp.pause();
-				}
+
+				Gdx.app.postRunnable(new Runnable() {
+					@Override
+					public void run () {
+						if (fbo != null && (fbo.getWidth() != player.getVideoWidth() || fbo.getHeight() != player.getVideoHeight())) {
+							fbo.dispose();
+							fbo = null;
+						}
+						if (fbo == null) {
+							fbo = new FrameBuffer(Pixmap.Format.RGB888, player.getVideoWidth(), player.getVideoHeight(), false);
+						}
+						prepared = true;
+						player.start();
+						if (pauseRequested) {
+							player.pause();
+						}
+					}
+				});
 			}
 		});
 		player.setOnErrorListener(new OnErrorListener() {
@@ -184,10 +227,10 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 				AssetManager assets = ((AndroidApplicationBase)Gdx.app).getContext().getAssets();
 				AssetFileDescriptor descriptor = assets.openFd(file.path());
 				player.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(), descriptor.getLength());
+				descriptor.close();
 			} else {
 				player.setDataSource(file.file().getAbsolutePath());
 			}
-			player.setSurface(new Surface(videoTexture));
 			player.prepareAsync();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -207,38 +250,36 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 
 	@Override
 	public boolean update () {
-		synchronized (this) {
-			if (frameAvailable) {
-				frameAvailable = false;
-				videoTexture.updateTexImage();
-				if (renderToFbo) {
-					if (fbo == null) {
-						fbo = new FrameBuffer(Pixmap.Format.RGB888, player.getVideoWidth(), player.getVideoHeight(), false);
-						frame = fbo.getColorBufferTexture();
-						frame.setFilter(minFilter, magFilter);
-					}
-					fbo.begin();
-					shader.bind();
+		if (surface == null || !frameAvailable || (fbo == null && renderToFbo)) return false;
 
-					Gdx.gl.glActiveTexture(GL20.GL_TEXTURE0);
-					Gdx.gl.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, getTextureExternal());
-					shader.setUniformi("u_sampler0", 0);
-					renderer.begin(transform, GL20.GL_TRIANGLE_STRIP);
-					renderer.texCoord(0, 0);
-					renderer.vertex(0, 0, 0);
-					renderer.texCoord(1, 0);
-					renderer.vertex(1, 0, 0);
-					renderer.texCoord(0, 1);
-					renderer.vertex(0, 1, 0);
-					renderer.texCoord(1, 1);
-					renderer.vertex(1, 1, 0);
-					renderer.end();
-					fbo.end();
-				}
-				return true;
-			}
+		frameAvailable = false;
+		videoTexture.updateTexImage();
+
+		if(!renderToFbo) return true;
+
+		fbo.begin();
+		shader.bind();
+
+		Gdx.gl.glActiveTexture(GL20.GL_TEXTURE0);
+		Gdx.gl.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, getTextureExternal());
+		shader.setUniformi("u_sampler0", 0);
+		renderer.begin(transform, GL20.GL_TRIANGLE_STRIP);
+		renderer.texCoord(0, 0);
+		renderer.vertex(0, 0, 0);
+		renderer.texCoord(1, 0);
+		renderer.vertex(1, 0, 0);
+		renderer.texCoord(0, 1);
+		renderer.vertex(0, 1, 0);
+		renderer.texCoord(1, 1);
+		renderer.vertex(1, 1, 0);
+		renderer.end();
+		fbo.end();
+		if (frame == null) {
+			frame = fbo.getColorBufferTexture();
+			frame.setFilter(minFilter, magFilter);
 		}
-		return false;
+
+		return true;
 	}
 
 	@Override
@@ -260,23 +301,13 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 		if (player != null && player.isPlaying()) {
 			player.stop();
 		}
+		stopped = true;
 		prepared = false;
-	}
-
-	private void setupRenderTexture () {
-		renderer = new ImmediateModeRenderer20(4, false, false, 1);
-		renderer.setShader(shader);
-		transform = new Matrix4().setToOrtho2D(0, 0, 1, 1);
-
-		videoTexture = new SurfaceTexture(textures[0]);
-		videoTexture.setOnFrameAvailableListener(this);
 	}
 
 	@Override
 	public void onFrameAvailable (SurfaceTexture surfaceTexture) {
-		synchronized (this) {
-			frameAvailable = true;
-		}
+		frameAvailable = true;
 	}
 
 	@Override
@@ -301,15 +332,26 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 	@Override
 	public void dispose () {
 		stop();
-		if (player != null) player.release();
+		surface = null;
+		handler.post(new Runnable() {
+			@Override
+			public void run () {
+				player.release();
+				player = null;
+			}
+		});
 
-		videoTexture.detachFromGLContext();
-
-		GLES20.glDeleteTextures(1, textures, 0);
+		if (videoTexture != null) {
+			videoTexture.detachFromGLContext();
+			GLES20.glDeleteTextures(1, textures, 0);
+		}
 
 		if (fbo != null) fbo.dispose();
-		shader.dispose();
-		renderer.dispose();
+		frame = null;
+		if (renderer != null) {
+			renderer.dispose();
+			shader.dispose();
+		}
 	}
 
 	@Override
