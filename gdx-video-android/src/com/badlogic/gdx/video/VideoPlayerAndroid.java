@@ -49,7 +49,7 @@ import java.io.IOException;
 /** Android implementation of the VideoPlayer class.
  *
  * @author Rob Bogie &lt;rob.bogie@codepoke.net&gt; */
-public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener {
+public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlayer, OnFrameAvailableListener {
 	//@off
 	String vertexShaderCode =
 			"#define highp\n" +
@@ -212,8 +212,11 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 				frameAvailable = false;
 				videoTexture.updateTexImage();
 				if (renderToFbo) {
-					if (fbo == null)
+					if (fbo == null) {
 						fbo = new FrameBuffer(Pixmap.Format.RGB888, player.getVideoWidth(), player.getVideoHeight(), false);
+						frame = fbo.getColorBufferTexture();
+						frame.setFilter(minFilter, magFilter);
+					}
 					fbo.begin();
 					shader.bind();
 
@@ -231,7 +234,6 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 					renderer.vertex(1, 1, 0);
 					renderer.end();
 					fbo.end();
-					frame = fbo.getColorBufferTexture();
 				}
 				return true;
 			}

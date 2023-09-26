@@ -31,7 +31,7 @@ import com.badlogic.gdx.video.VideoDecoder.VideoDecoderBuffers;
 /** Desktop implementation of the VideoPlayer
  *
  * @author Rob Bogie rob.bogie@codepoke.net */
-abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
+abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer implements VideoPlayer {
 	VideoDecoder decoder;
 	Texture texture;
 	Music audio;
@@ -135,7 +135,10 @@ abstract public class CommonVideoPlayerDesktop implements VideoPlayer {
 			if (!showAlreadyDecodedFrame) {
 				ByteBuffer videoData = decoder.nextVideoFrame();
 				if (videoData != null) {
-					if (texture == null) texture = new Texture(getTextureWidth(), getTextureHeight(), Format.RGB888);
+					if (texture == null) {
+						texture = new Texture(getTextureWidth(), getTextureHeight(), Format.RGB888);
+						texture.setFilter(minFilter, magFilter);
+					}
 					texture.bind();
 					Gdx.gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, getTextureWidth(), getTextureHeight(), 0, GL20.GL_RGB,
 						GL20.GL_UNSIGNED_BYTE, videoData);
