@@ -149,12 +149,7 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 		});
 	}
 
-	@Override
-	public boolean play (final FileHandle file) throws FileNotFoundException {
-		if (!file.exists()) {
-			throw new FileNotFoundException("Could not find file: " + file.path());
-		}
-
+	private void playInternal (final FileHandle file) {
 		prepared = false;
 		frame = null;
 		stopped = false;
@@ -165,14 +160,10 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 				@Override
 				public void run () {
 					if (stopped) return;
-					try {
-						play(file);
-					} catch (FileNotFoundException e) {
-						throw new RuntimeException(e);
-					}
+					playInternal(file);
 				}
 			});
-			return true;
+			return;
 		}
 
 		player.reset();
@@ -235,7 +226,15 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
 
+	@Override
+	public boolean play (FileHandle file) throws FileNotFoundException {
+		if (!file.exists()) {
+			throw new FileNotFoundException("Could not find file: " + file.path());
+		}
+
+		playInternal(file);
 		return true;
 	}
 
