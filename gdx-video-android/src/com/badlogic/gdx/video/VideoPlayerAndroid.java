@@ -255,7 +255,7 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 		frameAvailable = false;
 		videoTexture.updateTexImage();
 
-		if(!renderToFbo) return true;
+		if (!renderToFbo) return true;
 
 		fbo.begin();
 		shader.bind();
@@ -300,6 +300,7 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 	public void stop () {
 		if (player != null && player.isPlaying()) {
 			player.stop();
+			player.reset();
 		}
 		stopped = true;
 		prepared = false;
@@ -347,6 +348,7 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 		}
 
 		if (fbo != null) fbo.dispose();
+		fbo = null;
 		frame = null;
 		if (renderer != null) {
 			renderer.dispose();
