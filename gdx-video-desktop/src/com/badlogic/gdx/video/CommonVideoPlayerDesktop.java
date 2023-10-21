@@ -16,8 +16,14 @@
 
 package com.badlogic.gdx.video;
 
+import static com.badlogic.gdx.Application.LOG_DEBUG;
+
+import java.io.BufferedInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Music;
@@ -49,6 +55,9 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 	CompletionListener completionListener;
 	FileHandle currentFile;
 
+	BufferedInputStream inputStream;
+	ReadableByteChannel fileChannel;
+
 	boolean playing = false;
 
 	public CommonVideoPlayerDesktop () {
@@ -73,8 +82,6 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 			throw new FileNotFoundException("Could not find file: " + file.path());
 		}
 
-		currentFile = file;
-
 		if (!FfMpeg.isLoaded()) {
 			FfMpeg.loadLibraries();
 		}
@@ -84,11 +91,22 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 			stop();
 		}
 
+		VideoDecoder.setDebug(Gdx.app.getLogLevel() >= LOG_DEBUG);
+
+		currentFile = file;
+		inputStream = file.read(256 * 1024);
+		fileChannel = Channels.newChannel(inputStream);
+
 		isFirstFrame = true;
 		decoder = new VideoDecoder();
 		VideoDecoderBuffers buffers;
 		try {
-			buffers = decoder.loadFile(file.path());
+			buffers = decoder.loadStream(new VideoDecoder.VideoFileReader() {
+				@Override
+				public int fillBuffer (ByteBuffer buffer) {
+					return readFileContents(buffer);
+				}
+			});
 
 			if (buffers != null) {
 				ByteBuffer audioBuffer = buffers.getAudioBuffer();
@@ -117,6 +135,19 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 
 		playing = true;
 		return true;
+	}
+
+	/** Called by jni to fill in the file buffer.
+	 *
+	 * @param buffer The buffer that needs to be filled
+	 * @return The amount that has been filled into the buffer. */
+	private int readFileContents (ByteBuffer buffer) {
+		try {
+			buffer.rewind();
+			return fileChannel.read(buffer);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Override
@@ -200,6 +231,14 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 		if (decoder != null) {
 			decoder.dispose();
 			decoder = null;
+		}
+		if (inputStream != null) {
+			try {
+				inputStream.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			inputStream = null;
 		}
 
 		startTime = 0;

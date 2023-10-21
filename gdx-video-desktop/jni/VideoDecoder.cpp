@@ -14,13 +14,20 @@
  * limitations under the License.
  ******************************************************************************/
 
-
 #include "VideoDecoder.h"
 
 #include <cstring>
 #include <stdexcept>
 
 #include <pthread.h>
+
+static int readFunction(void* opaque, uint8_t* buffer, int bufferSize)
+{
+    VideoDecoder* decoder = (VideoDecoder*) opaque;
+
+    //Call implemented function
+    return decoder->getFillBufferFunc()(decoder->getCustomFuncData(), buffer, bufferSize);
+}
 
 VideoDecoder::VideoDecoder() : decodeCondvar(decodeMutex) {
     fileLoaded = false;
@@ -48,6 +55,10 @@ VideoDecoder::VideoDecoder() : decodeCondvar(decodeMutex) {
     audioDecodedUsed = 0;
     currentFrameDisplayed = 0;
     totalFramesBuffered = 0;
+
+    customFuncData = nullptr;
+    fillBufferFunc = nullptr;
+    cleanupFunc = nullptr;
 
     timestampOffset = 0;
 }
@@ -85,6 +96,10 @@ VideoDecoder::~VideoDecoder() {
     av_frame_free(&frame);
     avformat_close_input(&formatContext);
     av_freep(&audioDecodingBuffer);
+    if(avioContext != nullptr) {
+        av_freep(&avioContext->buffer);
+        av_freep(&avioContext);
+    }
 }
 
 void VideoDecoder::loadFile(char* filename, VideoBufferInfo *bufferInfo) {
@@ -108,6 +123,37 @@ void VideoDecoder::loadFile(char* filename, VideoBufferInfo *bufferInfo) {
 
     if(debugLoggingActive) {
         av_dump_format(formatContext, 0, filename, 0);
+    }
+    loadContainer(bufferInfo);
+}
+
+void VideoDecoder::loadStream(FillFileBufferFunc fillFunc, void* funcData, CleanupFunc cleanFunc, VideoBufferInfo* bufferInfo) {
+    if(fileLoaded) {
+        logError("[VideoPlayer::loadFile] Tried to load a new file. Ignoring...\n");
+        return;
+    }
+
+    if(fillFunc == NULL) {
+        logError("[VideoPlayer::loadFile] Invalid arguments supplied!\n");
+        throw std::invalid_argument("FillFileBufferFunc should be a valid function");
+    }
+
+    fillBufferFunc = fillFunc;
+    customFuncData = funcData;
+    cleanupFunc = cleanFunc;
+
+    uint8_t *avioBuffer = (uint8_t *)av_malloc(CUSTOMIO_BUFFER_SIZE);
+    avioContext = avio_alloc_context(avioBuffer, CUSTOMIO_BUFFER_SIZE, 0, (void*)this, &readFunction, NULL, NULL);
+
+    formatContext = avformat_alloc_context();
+    formatContext->pb = avioContext;
+
+    int err = avformat_open_input(&formatContext, "<stream>", NULL, NULL);
+    if(err < 0) {
+        char error[1024];
+        av_strerror(err, error, 1024);
+        logError("[VideoPlayer::loadFile] Error opening file: %s\n", error);
+        throw std::runtime_error("Could not open file!");
     }
     loadContainer(bufferInfo);
 }
@@ -419,6 +465,10 @@ void VideoDecoder::run() {
         decodeCondvar.wait();
     }
     decodeMutex.unlock();
+
+    if(cleanupFunc != NULL) {
+        cleanupFunc(customFuncData);
+    }
 }
 
 int VideoDecoder::getVideoFrameSize()
