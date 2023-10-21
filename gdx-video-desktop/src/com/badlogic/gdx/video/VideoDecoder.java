@@ -123,50 +123,46 @@ public class VideoDecoder implements Disposable {
 	 	JavaVM* jvm = NULL;
 	 	JavaVMAttachArgs attachArgs;
 
-	 	struct FfMpegCustomFileReaderData {
+	 	struct FFmpegFillBufferData {
             jobject objectToCall;
             jmethodID methodToCall;
         };
 
-		static int ffmpegCustomFileReader(void* data, u_int8_t* buffer, int bufferSize) {
-			FfMpegCustomFileReaderData* customData = (FfMpegCustomFileReaderData*)data;
-			JNIEnv * env;
-			// double check it's all ok
+        static JNIEnv * attachThread() {
+        	JNIEnv * env;
 			int getEnvStat = jvm->GetEnv((void **)&env, JNI_VERSION_1_6);
 			if (getEnvStat == JNI_EDETACHED) {
-				if (jvm->AttachCurrentThread((void **) &env, (void *)&attachArgs) != 0) {
+				if (jvm->AttachCurrentThread((void **)&env, (void *)&attachArgs) != 0) {
 					logError("Failed to attach\n");
-					return 0;
+					return NULL;
 				}
 			} else if (getEnvStat == JNI_EVERSION) {
 				logError("Unsupported version\n");
-				return 0;
+				return NULL;
 			}
+			return env;
+        }
+
+		static int ffmpegFillBuffer(void* data, u_int8_t* buffer, int bufferSize) {
+			FFmpegFillBufferData* customData = (FFmpegFillBufferData*)data;
+			JNIEnv * env = attachThread();
+			if(env == NULL) return 0;
 			jint bytes = env->CallIntMethod(customData->objectToCall, customData->methodToCall, env->NewDirectByteBuffer(buffer, bufferSize));
 			if (env->ExceptionCheck()) {
 				env->ExceptionDescribe();
 			}
-			if(getEnvStat == JNI_EDETACHED)
-				jvm->DetachCurrentThread();
 			if(bytes != bufferSize)
-				logDebug("Filled AVIO buffer partially (%d/%d bytes).\n", bytes, bufferSize);
+				logDebug("[VideoPlayer::fillBuffer] AVIO buffer not filled (%d/%d bytes).\n", bytes, bufferSize);
 			return bytes;
 		}
 
-		static void customReaderDataCleanup(void* data) {
-			FfMpegCustomFileReaderData* customData = (FfMpegCustomFileReaderData*)data;
-			JNIEnv * env;
-			int getEnvStat = jvm->GetEnv((void **)&env, JNI_VERSION_1_6);
-			if (getEnvStat == JNI_EDETACHED) {
-				if (jvm->AttachCurrentThread((void **) &env, (void *)&attachArgs) != 0) {
-					logError("Failed to attach\n");
-					return;
-				}
-			}
+		static void ffmpegDataCleanup(void* data) {
+			FFmpegFillBufferData* customData = (FFmpegFillBufferData*)data;
+			JNIEnv * env = attachThread();
+			if(env == NULL) return;
 			env->DeleteGlobalRef(customData->objectToCall);
-			if(getEnvStat == JNI_EDETACHED)
-				jvm->DetachCurrentThread();
-            memset(customData, 0, sizeof(FfMpegCustomFileReaderData));
+			jvm->DetachCurrentThread();
+            memset(customData, 0, sizeof(FFmpegFillBufferData));
 		}
 	 */
 
@@ -200,8 +196,8 @@ public class VideoDecoder implements Disposable {
 		try {
 			VideoBufferInfo bufferInfo;
             memset(&bufferInfo, 0, sizeof(VideoBufferInfo));
-            FfMpegCustomFileReaderData* data = new FfMpegCustomFileReaderData();
-            memset(data, 0, sizeof(FfMpegCustomFileReaderData));
+            FFmpegFillBufferData* data = new FFmpegFillBufferData();
+            memset(data, 0, sizeof(FFmpegFillBufferData));
             data->objectToCall = env->NewGlobalRef(reader);
             jclass clazz = env->GetObjectClass(data->objectToCall);
             data->methodToCall = env->GetMethodID(clazz, "fillBuffer", "(Ljava/nio/ByteBuffer;)I");
@@ -209,7 +205,7 @@ public class VideoDecoder implements Disposable {
                 delete data;
                 throw std::invalid_argument("Supplied method name invalid! Is it having the correct signature?");
             }
-            pointer->loadStream(ffmpegCustomFileReader, data, customReaderDataCleanup, &bufferInfo);
+            pointer->loadStream(ffmpegFillBuffer, data, ffmpegDataCleanup, &bufferInfo);
             jobject videoBuffer = NULL;
             jobject audioBuffer = NULL;
             if(bufferInfo.videoBuffer != NULL && bufferInfo.videoBufferSize > 0) {
