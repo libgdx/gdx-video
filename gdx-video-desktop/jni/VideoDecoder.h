@@ -39,6 +39,7 @@ extern "C"
 //It will always have 1 single empty element, which is used as protection for faster synchronization.
 #define VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES 4
 #define VIDEOPLAYER_AUDIO_BUFFER_SIZE 1024
+#define CUSTOMIO_BUFFER_SIZE 16384
 
 struct VideoBufferInfo {
     void* videoBuffer;
@@ -51,6 +52,13 @@ struct VideoBufferInfo {
     int audioChannels;
     int audioSampleRate;
 };
+
+/**
+ *  The FillFileBufferFunc function will give a pointer to some data you gave to it, a buffer, and an integer representing
+ *  the buffer's size. The function needs to return the amount of data that is filled into the buffer.
+ */
+typedef int (*FillFileBufferFunc)(void*, uint8_t*, int);
+typedef void (*CleanupFunc)(void*);
 
 /**
  * @brief The VideoPlayer class is the base class which will handle everything needed to play a videofile.
@@ -69,12 +77,23 @@ public:
     virtual ~VideoDecoder();
 
     /**
-     * @brief loadFile This function will load the given file, and creates a buffer which will be put in the pointer.
+     * @brief loadFile This function starts loading the given file, and creates the video and audio buffers.
      * @param filename The filename of the file to load
-     * @param bufferPointer A reference to a void* which will then be filled with the buffer address.
+     * @param bufferInfo A reference to a VideoBufferInfo, which will then be filled with the buffer addresses.
      * @return The size of the buffer
      */
     void loadFile(char* filename, VideoBufferInfo* bufferInfo);
+
+    /**
+     * @brief loadFile This function starts loading video from the given stream, and creates the video and audio buffers.
+     * @param fillFunc The function to call to fill the I/O buffers
+     * @param funcData Custom data to pass to the fillFunc as first parameter
+     * @param cleanFunc An optional function to call when the decoding stops
+     * @param bufferInfo A reference to a VideoBufferInfo, which will then be filled with the buffer addresses.
+     * @return The size of the buffer
+     */
+    void loadStream(FillFileBufferFunc fillFunc, void* funcData, CleanupFunc cleanFunc, VideoBufferInfo* bufferInfo);
+
     /**
      * @brief fillBufferWithNextFrame This function will fill the buffers with the data of the next available frame
      * @return Whether a new frame was available
@@ -97,6 +116,9 @@ public:
      * @return The size in bytes of a single video frame
      */
     int getVideoFrameSize();
+
+    void *getCustomFuncData() const { return customFuncData; }
+    FillFileBufferFunc getFillBufferFunc() const { return fillBufferFunc; }
 
     /**
      * @brief isBuffered Returns whether the frame buffer is full
@@ -123,6 +145,12 @@ private:
      */
     void loadContainer(VideoBufferInfo* bufferInfo);
 private:
+    // Custom / Streaming I/O
+    void* customFuncData;
+    FillFileBufferFunc fillBufferFunc;
+    CleanupFunc cleanupFunc;
+    AVIOContext* avioContext;
+
     // Parsing
     AVFormatContext* formatContext;
 

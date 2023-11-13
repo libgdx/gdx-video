@@ -28,6 +28,11 @@ public class VideoDecoder implements Disposable {
 	 * object is a wrapper. */
 	private long nativePointer;
 
+	interface VideoFileReader {
+		@SuppressWarnings("unused")
+		int fillBuffer (ByteBuffer buffer);
+	}
+
 	public static class VideoDecoderBuffers {
 		private final ByteBuffer videoBuffer;
 		private final ByteBuffer audioBuffer;
@@ -116,7 +121,49 @@ public class VideoDecoder implements Disposable {
 	 	#include <stdexcept>
 
 	 	JavaVM* jvm = NULL;
+	 	JavaVMAttachArgs attachArgs;
 
+	 	struct FFmpegFillBufferData {
+            jobject objectToCall;
+            jmethodID methodToCall;
+        };
+
+        static JNIEnv * attachThread() {
+        	JNIEnv * env;
+			int getEnvStat = jvm->GetEnv((void **)&env, JNI_VERSION_1_6);
+			if (getEnvStat == JNI_EDETACHED) {
+				if (jvm->AttachCurrentThread((void **)&env, (void *)&attachArgs) != 0) {
+					logError("Failed to attach\n");
+					return NULL;
+				}
+			} else if (getEnvStat == JNI_EVERSION) {
+				logError("Unsupported version\n");
+				return NULL;
+			}
+			return env;
+        }
+
+		static int ffmpegFillBuffer(void* data, u_int8_t* buffer, int bufferSize) {
+			FFmpegFillBufferData* customData = (FFmpegFillBufferData*)data;
+			JNIEnv * env = attachThread();
+			if(env == NULL) return 0;
+			jint bytes = env->CallIntMethod(customData->objectToCall, customData->methodToCall, env->NewDirectByteBuffer(buffer, bufferSize));
+			if (env->ExceptionCheck()) {
+				env->ExceptionDescribe();
+			}
+			if(bytes != bufferSize)
+				logDebug("[VideoPlayer::fillBuffer] AVIO buffer not filled (%d/%d bytes).\n", bytes, bufferSize);
+			return bytes;
+		}
+
+		static void ffmpegDataCleanup(void* data) {
+			FFmpegFillBufferData* customData = (FFmpegFillBufferData*)data;
+			JNIEnv * env = attachThread();
+			if(env == NULL) return;
+			env->DeleteGlobalRef(customData->objectToCall);
+			jvm->DetachCurrentThread();
+            memset(customData, 0, sizeof(FFmpegFillBufferData));
+		}
 	 */
 
 	/** Creates an instance on the native side.
@@ -128,25 +175,37 @@ public class VideoDecoder implements Disposable {
             env->GetJavaVM(&jvm);
         }
 
+        attachArgs.version = JNI_VERSION_1_6;
+		attachArgs.name = (char *)"FFMpegInternalThread";
+		attachArgs.group = NULL;
+
 		VideoDecoder* pointer = new VideoDecoder();
 		return (jlong)pointer;
 											 */
 
-	/** This will load a file for playback
+	/** This will load a video for playback from an I/O Stream
 	 *
-	 * @param filePath The path to the file containing the video data.
+	 * @param reader A VideoFileReader that is used to fill the FFmpeg IO buffers.
 	 * @return A VideoDecoderBuffers object which contains all the information that may be needed about the video.
 	 * @throws IllegalArgumentException When the filename is invalid.
 	 * @throws Exception                Runtime exceptions in c++, which can have different causes.
 	 */
-	public native VideoDecoderBuffers loadFile (String filePath)
+	public native VideoDecoderBuffers loadStream (VideoFileReader reader)
 			throws IllegalArgumentException, Exception;/*
 		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
 		try {
 			VideoBufferInfo bufferInfo;
             memset(&bufferInfo, 0, sizeof(VideoBufferInfo));
-
-            pointer->loadFile(filePath, &bufferInfo);
+            FFmpegFillBufferData* data = new FFmpegFillBufferData();
+            memset(data, 0, sizeof(FFmpegFillBufferData));
+            data->objectToCall = env->NewGlobalRef(reader);
+            jclass clazz = env->GetObjectClass(data->objectToCall);
+            data->methodToCall = env->GetMethodID(clazz, "fillBuffer", "(Ljava/nio/ByteBuffer;)I");
+            if(data->methodToCall == NULL) {
+                delete data;
+                throw std::invalid_argument("Supplied method name invalid! Is it having the correct signature?");
+            }
+            pointer->loadStream(ffmpegFillBuffer, data, ffmpegDataCleanup, &bufferInfo);
             jobject videoBuffer = NULL;
             jobject audioBuffer = NULL;
             if(bufferInfo.videoBuffer != NULL && bufferInfo.videoBufferSize > 0) {
@@ -218,4 +277,8 @@ public class VideoDecoder implements Disposable {
 		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
 		return pointer->isBuffered();
 													 */
+
+	public static native void setDebug(boolean enableDebug);/*
+		debug(enableDebug);
+		*/
 }
