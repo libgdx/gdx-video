@@ -63,10 +63,10 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 	protected AVAsset asset;
 	AVPlayerItem playerItem;
 	AVPlayer player;
-	private boolean playerIsReady;
-	private boolean playerIsPrerolled;
+	private volatile boolean playerIsReady;
+	private boolean isLoaded;
 	private boolean pauseRequested;
-	private boolean isPlaying;
+	private volatile boolean isPlaying;
 	private boolean isLooping;
 
 	/* --- Video --- */
@@ -90,7 +90,7 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 		return new AVPlayerItemVideoOutput(attributes);
 	}
 
-	protected void onVideoTrackLoaded (AVAssetTrack track) {
+	protected synchronized void onVideoTrackLoaded (AVAssetTrack track) {
 		List<? extends NativeObject> formatDescriptions = track.getFormatDescriptions();
 		videoTrack = track;
 		videoFormat = formatDescriptions.get(0).as(CMVideoFormatDescription.class);
@@ -102,6 +102,14 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 		message += CMVideoCodecType.valueOf(videoFormat.getMediaSubType());
 		message += " @ " + getVideoWidth() + "x" + getVideoHeight();
 		Gdx.app.debug("VideoPlayer", message);
+		if (playerIsReady) {
+			Gdx.app.postRunnable(new Runnable() {
+				@Override
+				public void run () {
+					setLoaded();
+				}
+			});
+		}
 	}
 
 	protected void onAudioTrackLoaded (AVAssetTrack track) {
@@ -114,19 +122,24 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 		Gdx.app.debug("VideoPlayer", message);
 	}
 
-	private void onPlayerReady () {
-		// Preroll player
+	private synchronized void checkReady () {
+		if (player == null || player.getStatus() != AVPlayerStatus.ReadyToPlay) return;
+		playerIsReady = true;
+		Gdx.app.debug("VideoPlayer", "Video " + file.path() + " is now ready to play!");
+		// Start prerolling the video player.
+		// From testing, this isn't guaranteed to finish, so we start playback once
+		// the player is ready and the video dimensions are available.
 		player.prerollAtRate(1.0f, new VoidBooleanBlock() {
 			@Override
 			public void invoke (boolean success) {
-				if (!success) return;
-				onPlayerPrerolled();
 			}
 		});
+		if (videoDimensions != null) setLoaded();
 	}
 
-	private void onPlayerPrerolled () {
-		playerIsPrerolled = true;
+	private void setLoaded () {
+		if (isLoaded) return;
+		isLoaded = true;
 		if (!pauseRequested) {
 			resume();
 		}
@@ -168,22 +181,23 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 		player.addKeyValueObserver("status", new NSObject.NSKeyValueObserver() {
 			@Override
 			public void observeValue (String keyPath, NSObject object, NSKeyValueChangeInfo change) {
-				AVPlayer player = object.as(AVPlayer.class);
-				String message = "Player status is now " + player.getStatus() + ".";
-				Gdx.app.debug("VideoPlayer", message);
-				if (!playerIsReady && player.getStatus() == AVPlayerStatus.ReadyToPlay) {
-					playerIsReady = true;
-					onPlayerReady();
-				}
+				Gdx.app.postRunnable(new Runnable() {
+					@Override
+					public void run () {
+						if (!playerIsReady) checkReady();
+					}
+				});
 			}
 		});
 
 		AVPlayerItem.Notifications.observeDidPlayToEndTime(playerItem, new VoidBlock1<AVPlayerItem>() {
 			@Override
 			public void invoke (AVPlayerItem avPlayerItem) {
-				if (isLooping) {
-					player.seekToTime(CMTime.Zero());
-					player.play();
+				if (isLooping && isPlaying) {
+					synchronized (VideoPlayerIos.this) {
+						player.seekToTime(CMTime.Zero());
+						player.play();
+					}
 				} else if (completionListener != null) {
 					completionListener.onCompletionListener(VideoPlayerIos.this.file);
 				}
@@ -213,7 +227,7 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 	}
 
 	@Override
-	public boolean update () {
+	public synchronized boolean update () {
 		if (player == null) return false;
 		CMTime position = player.getCurrentTime();
 		if (!videoOutput.hasNewPixelBufferForItemTime(position)) return false;
@@ -232,12 +246,13 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 
 	@Override
 	public boolean isBuffered () {
-		return playerIsPrerolled;
+		if (!playerIsReady) checkReady();
+		return isLoaded;
 	}
 
 	@Override
-	public void pause () {
-		if (!playerIsPrerolled) {
+	public synchronized void pause () {
+		if (!isLoaded) {
 			pauseRequested = true;
 		} else {
 			player.pause();
@@ -246,24 +261,25 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 	}
 
 	@Override
-	public void resume () {
+	public synchronized void resume () {
 		pauseRequested = false;
-		if (playerIsPrerolled) {
+		if (isLoaded) {
 			player.play();
 			isPlaying = true;
 		}
 	}
 
 	@Override
-	public void stop () {
+	public synchronized void stop () {
 		if (player != null) {
 			player.cancelPendingPrerolls();
 			pause();
 			playerItem.removeOutput(videoOutput);
 		}
 
+		isPlaying = false;
 		playerIsReady = false;
-		playerIsPrerolled = false;
+		isLoaded = false;
 		pauseRequested = false;
 
 		audioTrack = null;
@@ -308,7 +324,7 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 	}
 
 	@Override
-	public int getCurrentTimestamp () {
+	public synchronized int getCurrentTimestamp () {
 		if (player == null) return 0;
 		return (int)(player.getCurrentTime().getSeconds() * 1000);
 	}
@@ -323,13 +339,13 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 	}
 
 	@Override
-	public void setVolume (float volume) {
+	public synchronized void setVolume (float volume) {
 		if (player == null) return;
 		player.setVolume(volume);
 	}
 
 	@Override
-	public float getVolume () {
+	public synchronized float getVolume () {
 		if (player == null) return 0f;
 		return player.getVolume();
 	}

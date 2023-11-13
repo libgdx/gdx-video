@@ -72,18 +72,22 @@ public interface VideoPlayer extends Disposable {
 
 	/** This will set a listener for whenever the video size of a file is known (after calling play). This is needed since the size
 	 * of the video is not directly known after using the play method.
+	 * <p>
+	 * This may be called on any thread, so it is not safe to call other VideoPlayer functions directly.
 	 *
 	 * @param listener The listener to set */
 	void setOnVideoSizeListener (VideoSizeListener listener);
 
 	/** This will set a listener for when the video is done playing. The listener will be called every time a video is done
 	 * playing.
+	 * <p>
+	 * This may be called on any thread, so it is not safe to call other VideoPlayer functions directly.
 	 *
 	 * @param listener The listener to set */
 	void setOnCompletionListener (CompletionListener listener);
 
 	/** This will return the width of the currently playing video.
-	 *
+	 * <p>
 	 * This function cannot be called until the {@link VideoSizeListener} has been called for the currently playing video. If this
 	 * callback has not been set, a good alternative is to wait until the {@link #isBuffered} function returns true, which
 	 * guarantees the availability of the videoSize.
@@ -92,7 +96,7 @@ public interface VideoPlayer extends Disposable {
 	int getVideoWidth ();
 
 	/** This will return the height of the currently playing video.
-	 *
+	 * <p>
 	 * This function cannot be called until the {@link VideoSizeListener} has been called for the currently playing video. If this
 	 * callback has not been set, a good alternative is to wait until the {@link #isBuffered} function returns true, which
 	 * guarantees the availability of the videoSize.
