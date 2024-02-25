@@ -179,7 +179,9 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 				} else if (looping) {
 					try {
 						// NOTE: this just creates a new decoder instead of reusing the existing one.
+						float volume = getVolume();
 						play(currentFile);
+						setVolume(volume);
 					} catch (FileNotFoundException e) {
 						throw new RuntimeException(e);
 					}
