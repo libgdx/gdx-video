@@ -194,17 +194,17 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 			}
 
 			isFirstFrame = false;
-			double millisecondsAhead;
+			double secondsAhead;
 			if (audio == null) {
 				float deltaTime = Gdx.graphics.getDeltaTime();
 				// Avoid huge delta time if game execution has been suspended
 				if (deltaTime >= 1f) deltaTime = 1f / Gdx.graphics.getDisplayMode().refreshRate;
 				currentVideoTime += deltaTime;
-				millisecondsAhead = decoder.getCurrentFrameTimestamp() - currentVideoTime;
+				secondsAhead = decoder.getCurrentFrameTimestamp() - currentVideoTime;
 			} else {
-				millisecondsAhead = decoder.getCurrentFrameTimestamp() - audio.getPosition();
+				secondsAhead = decoder.getCurrentFrameTimestamp() - audio.getPosition();
 			}
-			showAlreadyDecodedFrame = millisecondsAhead > .02f;
+			showAlreadyDecodedFrame = secondsAhead > .02f;
 			return newFrame;
 		}
 		return false;
