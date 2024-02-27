@@ -41,15 +41,14 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 	VideoDecoder decoder;
 	Texture texture;
 	Music audio;
-	long startTime = 0;
 	boolean showAlreadyDecodedFrame = false;
 
 	boolean paused = false;
 	boolean looping = false;
 	boolean isFirstFrame = true;
-	long timeBeforePause = 0;
 
 	int currentVideoWidth, currentVideoHeight;
+	float currentVideoTime;
 	int videoBufferWidth;
 	VideoSizeListener sizeListener;
 	CompletionListener completionListener;
@@ -153,10 +152,9 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 	@Override
 	public boolean update () {
 		if (decoder != null && (!paused || isFirstFrame) && playing) {
-			if (!paused && startTime == 0) {
+			if (!paused && currentVideoTime == 0) {
 				// Since startTime is 0, this means that we should now display the first frame of the video, and set the
 				// time.
-				startTime = System.currentTimeMillis();
 				if (audio != null) {
 					audio.play();
 				}
@@ -196,9 +194,17 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 			}
 
 			isFirstFrame = false;
-			long currentVideoTime = System.currentTimeMillis() - startTime;
-			long millisecondsAhead = (long)getCurrentTimestamp() - currentVideoTime;
-			showAlreadyDecodedFrame = millisecondsAhead > 20;
+			double millisecondsAhead;
+			if (audio == null) {
+				float deltaTime = Gdx.graphics.getDeltaTime();
+				// Avoid huge delta time if game execution has been suspended
+				if (deltaTime >= 1f) deltaTime = 1f / Gdx.graphics.getDisplayMode().refreshRate;
+				currentVideoTime += deltaTime;
+				millisecondsAhead = decoder.getCurrentFrameTimestamp() - currentVideoTime;
+			} else {
+				millisecondsAhead = decoder.getCurrentFrameTimestamp() - audio.getPosition();
+			}
+			showAlreadyDecodedFrame = millisecondsAhead > .02f;
 			return newFrame;
 		}
 		return false;
@@ -243,7 +249,7 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 			inputStream = null;
 		}
 
-		startTime = 0;
+		currentVideoTime = 0;
 		showAlreadyDecodedFrame = false;
 		isFirstFrame = true;
 	}
@@ -255,11 +261,6 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 			if (audio != null) {
 				audio.pause();
 			}
-			if (startTime != 0L) {
-				timeBeforePause = System.currentTimeMillis() - startTime;
-			} else {
-				timeBeforePause = 0L;
-			}
 		}
 	}
 
@@ -270,7 +271,6 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 			if (audio != null) {
 				audio.play();
 			}
-			startTime = System.currentTimeMillis() - timeBeforePause;
 		}
 	}
 
