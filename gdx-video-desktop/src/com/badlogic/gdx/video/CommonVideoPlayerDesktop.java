@@ -310,12 +310,12 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 
 	@Override
 	public void setVolume (float volume) {
-		audio.setVolume(volume);
+		if (audio != null) audio.setVolume(volume);
 	}
 
 	@Override
 	public float getVolume () {
-		return audio.getVolume();
+		return audio == null ? 0 : audio.getVolume();
 	}
 
 	@Override
