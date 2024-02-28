@@ -152,12 +152,8 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 	@Override
 	public boolean update () {
 		if (decoder != null && (!paused || isFirstFrame) && playing) {
-			if (!paused && currentVideoTime == 0) {
-				// Since startTime is 0, this means that we should now display the first frame of the video, and set the
-				// time.
-				if (audio != null) {
-					audio.play();
-				}
+			if (!paused && audio != null) {
+				audio.play();
 			}
 
 			boolean newFrame = false;
