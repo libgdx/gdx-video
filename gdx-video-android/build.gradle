@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 
 android {
-    namespace = 'com.badlogicgames.gdx_video'
+    namespace = 'com.badlogic.gdx.video'
 
     compileSdkVersion = project.compileSdk
     buildToolsVersion = project.buildTools
