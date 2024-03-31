@@ -136,6 +136,9 @@ jobs:
     - name: Create JAR with natives for desktop
       run: ./gradlew jnigenJarNativesDesktop --info
 
+    - name: Creat android directory
+      run: mkdir -p $HOME/.android
+
     - name: Create debug keystore for android
       run: keytool -genkey -v -keystore $HOME/.android/debug.keystore -storetype PKCS12 -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -noprompt -dname "CN=GdxVideo, OU=libGDX, O=libGDX, L=Unknown, ST=Unknown, C=US"
 
