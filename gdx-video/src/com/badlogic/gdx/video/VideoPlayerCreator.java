@@ -58,7 +58,7 @@ public class VideoPlayerCreator {
 				Gdx.app.log("Gdx-Video", "VideoPlayer can't be used on android < API level 12");
 			}
 		} else if (type == ApplicationType.iOS) {
-			if (Gdx.app.getVersion >= 15) {
+			if (Gdx.app.getVersion() >= 15) {
 				className = "com.badlogic.gdx.video.VideoPlayerIos";
 			} else {
 				Gdx.app.log("Gdx-Video", "VideoPlayer can't be used on iOS < 15");
