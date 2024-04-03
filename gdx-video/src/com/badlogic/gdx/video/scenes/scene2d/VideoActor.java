@@ -49,6 +49,8 @@ public class VideoActor extends Actor {
 	public void draw (Batch batch, float parentAlpha) {
 		Texture texture = player.getTexture();
 		if (texture == null) return;
+		Color color = getColor();
+		batch.setColor(color.r, color.g, color.b, color.a * parentAlpha);
 		batch.draw(texture, getX(), getY(), getWidth(), getHeight(), 0, 0, player.getVideoWidth(), player.getVideoHeight(), false,
 			false);
 	}
