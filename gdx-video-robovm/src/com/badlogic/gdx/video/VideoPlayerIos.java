@@ -236,6 +236,7 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 			return false;
 		}
 		updateTextureFromBuffer(buffer);
+		buffer.close();
 		return true;
 	}
 
