@@ -42,12 +42,12 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 	Texture texture;
 	Music audio;
 	long startTime = 0;
-	boolean showAlreadyDecodedFrame = false;
+	long lastFrameID = 0;
+	float targetPosition = 0;
 
 	boolean paused = false;
 	boolean looping = false;
 	boolean isFirstFrame = true;
-	long timeBeforePause = 0;
 
 	int currentVideoWidth, currentVideoHeight;
 	int videoBufferWidth;
@@ -157,15 +157,39 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 				// Since startTime is 0, this means that we should now display the first frame of the video, and set the
 				// time.
 				startTime = System.currentTimeMillis();
+				targetPosition = 0;
 				if (audio != null) {
 					audio.play();
 				}
 			}
 
 			boolean newFrame = false;
-			if (!showAlreadyDecodedFrame) {
+
+			long currentFrameID = Gdx.graphics.getFrameId();
+			if (currentFrameID != lastFrameID) {
+				lastFrameID = Gdx.graphics.getFrameId();
+				// Update video position
+				if (audio != null) {
+					targetPosition = audio.getPosition();
+				} else {
+					float delta = Gdx.graphics.getDeltaTime();
+					if (delta < 0.25f) {
+						targetPosition += delta;
+					}
+				}
+			}
+
+			float currentPosition = isFirstFrame ? -1 : (float)decoder.getCurrentFrameTimestamp();
+
+			while (currentPosition <= targetPosition) {
 				ByteBuffer videoData = decoder.nextVideoFrame();
 				if (videoData != null) {
+					float newPosition = (float)decoder.getCurrentFrameTimestamp();
+					if (newPosition == currentPosition) {
+						// A frame was repeated (not loaded fast enough)
+						break;
+					}
+					currentPosition = newPosition;
 					if (texture == null) {
 						texture = new Texture(getTextureWidth(), getTextureHeight(), Format.RGB888);
 						texture.setFilter(minFilter, magFilter);
@@ -196,9 +220,6 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 			}
 
 			isFirstFrame = false;
-			long currentVideoTime = System.currentTimeMillis() - startTime;
-			long millisecondsAhead = (long)getCurrentTimestamp() - currentVideoTime;
-			showAlreadyDecodedFrame = millisecondsAhead > 20;
 			return newFrame;
 		}
 		return false;
@@ -244,7 +265,6 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 		}
 
 		startTime = 0;
-		showAlreadyDecodedFrame = false;
 		isFirstFrame = true;
 	}
 
@@ -254,11 +274,6 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 			paused = true;
 			if (audio != null) {
 				audio.pause();
-			}
-			if (startTime != 0L) {
-				timeBeforePause = System.currentTimeMillis() - startTime;
-			} else {
-				timeBeforePause = 0L;
 			}
 		}
 	}
@@ -270,7 +285,6 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 			if (audio != null) {
 				audio.play();
 			}
-			startTime = System.currentTimeMillis() - timeBeforePause;
 		}
 	}
 
