@@ -13,6 +13,8 @@ android {
 
         minSdkVersion project.minSdk
         targetSdkVersion project.targetSdk
+
+        consumerProguardFiles 'proguard-rules.txt'
     }
 
     sourceSets {
