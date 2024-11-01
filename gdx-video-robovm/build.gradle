@@ -1,7 +1,5 @@
 apply plugin: "java-library"
 
-apply from: '../publish.gradle'
-
 if (JavaVersion.current().isJava9Compatible()) {
     compileJava {
         options.release = 7
@@ -9,6 +7,11 @@ if (JavaVersion.current().isJava9Compatible()) {
 }
 targetCompatibility = 1.7
 sourceCompatibility = 1.7
+
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
 
 sourceSets {
     main {

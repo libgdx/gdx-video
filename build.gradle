@@ -38,15 +38,6 @@ allprojects {
             return project.hasProperty("RELEASE")
         }
 
-        isLocalBuild = {
-            return project.hasProperty("LOCAL")
-        }
-
-        getLocalRepositoryUrl = {
-            return project.hasProperty('LOCAL_REPOSITORY_URL') ? LOCAL_REPOSITORY_URL
-                    : 'file://' + new File(System.getProperty('user.home'), '.m2/repository').absolutePath
-        }
-
         getReleaseRepositoryUrl = {
             return project.hasProperty('RELEASE_REPOSITORY_URL') ? RELEASE_REPOSITORY_URL
                     : "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
@@ -113,3 +104,5 @@ subprojects {
         }
     }
 }
+
+apply from : 'publish.gradle'

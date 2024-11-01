@@ -30,6 +30,13 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_7
         targetCompatibility JavaVersion.VERSION_1_7
     }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+            withJavadocJar()
+        }
+    }
 }
 
 dependencies {
@@ -41,4 +48,3 @@ eclipse.project {
     name = projectGroup + "-android"
 }
 
-apply from : '../androidpublish.gradle'

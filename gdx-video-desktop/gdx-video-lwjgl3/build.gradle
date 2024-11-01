@@ -1,14 +1,17 @@
 apply plugin: "java-library"
 
-apply from: '../../publish.gradle'
-
-configurations {
-    custom
-    compile.extendsFrom custom
+if (JavaVersion.current().isJava9Compatible()) {
+    compileJava {
+        options.release = 8
+    }
 }
-
 targetCompatibility = 1.8
 sourceCompatibility = 1.8
+
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
 
 sourceSets {
     main {
