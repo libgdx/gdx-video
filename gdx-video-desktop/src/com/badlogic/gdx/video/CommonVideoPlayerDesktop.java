@@ -319,7 +319,7 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 
 	@Override
 	public boolean isPlaying () {
-		return playing;
+		return playing && !paused;
 	}
 
 	@Override
