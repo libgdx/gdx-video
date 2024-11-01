@@ -1,3 +1,9 @@
+buildscript {
+	dependencies {
+		classpath "com.mobidevelop.robovm:robovm-gradle-plugin:$robovmVersion"
+	}
+}
+
 apply plugin: 'robovm'
 
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'

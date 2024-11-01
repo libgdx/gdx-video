@@ -5,14 +5,9 @@ buildscript {
         mavenLocal()
         mavenCentral()
         gradlePluginPortal()
-        google()
-        maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
     }
     dependencies {
-        classpath "org.docstr:gwt-gradle-plugin:$gwtPluginVersion"
-        classpath "com.android.tools.build:gradle:$androidPluginVersion"
-        classpath "com.mobidevelop.robovm:robovm-gradle-plugin:$robovmVersion"
-        classpath "com.badlogicgames.gdx:gdx-jnigen-gradle:2.4.1"
+        classpath "com.badlogicgames.gdx:gdx-jnigen-gradle:2.5.2"
     }
 }
 
@@ -54,6 +49,16 @@ allprojects {
 
         getRepositoryPassword = {
             return project.hasProperty('NEXUS_PASSWORD') ? NEXUS_PASSWORD : "$System.env.NEXUS_PASSWORD"
+        }
+    }
+
+    buildscript {
+        repositories {
+            mavenLocal()
+            mavenCentral()
+            gradlePluginPortal()
+            google()
+            maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
         }
     }
 

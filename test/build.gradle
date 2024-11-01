@@ -1,5 +1,5 @@
 configure(subprojects - project(':test:android')) {
-	apply plugin: 'java-library'
+	apply plugin: 'java'
 	sourceCompatibility = 8.0
 	compileJava {
 		options.incremental = true

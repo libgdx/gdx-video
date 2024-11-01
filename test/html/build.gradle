@@ -5,6 +5,7 @@ buildscript {
 		}
 	}
 	dependencies {
+		classpath "org.docstr:gwt-gradle-plugin:$gwtPluginVersion"
 		classpath 'org.gretty:gretty:3.1.0'
 	}
 }
