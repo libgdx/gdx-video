@@ -1,8 +1,15 @@
-name: Publish Snapshot
+name: Build and Publish
 
 on:
   push:
     branches: [ master ]
+  workflow_dispatch:
+    branches: [ master ]
+  release:
+    types: [ published ]
+
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
 jobs:
   natives-macos:
@@ -110,8 +117,8 @@ jobs:
     - natives-windows
     runs-on: ubuntu-20.04
     env:
-      ORG_GRADLE_PROJECT_MAVEN_USERNAME: ""
-      ORG_GRADLE_PROJECT_MAVEN_PASSWORD: ""
+      ORG_GRADLE_PROJECT_MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+      ORG_GRADLE_PROJECT_MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
     steps:
     - uses: actions/checkout@v3
       with:
@@ -136,8 +143,19 @@ jobs:
     - name: Create JAR with natives for desktop
       run: ./gradlew jnigenJarNativesDesktop --info
 
-    - name: Build and publish snapshot with gradle
-      env:
-        NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-        NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
-      run: ./gradlew publish
+    - name: Snapshot build deploy
+      if: github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository_owner == 'libgdx'
+      run: |
+        ./gradlew build publish
+
+    - name: Import GPG key
+      if: github.event_name == 'release' && github.repository_owner == 'libgdx'
+      id: import_gpg
+      uses: crazy-max/ghaction-import-gpg@1c6a9e9d3594f2d743f1b1dd7669ab0dfdffa922
+      with:
+        gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+        passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+    - name: Release build deploy
+      if: github.event_name == 'release' && github.repository_owner == 'libgdx'
+      run: ./gradlew build publish -PRELEASE -Psigning.gnupg.keyId=${{ secrets.GPG_KEYID }} -Psigning.gnupg.passphrase=${{ secrets.GPG_PASSPHRASE }} -Psigning.gnupg.keyName=${{ secrets.GPG_KEYID }}
