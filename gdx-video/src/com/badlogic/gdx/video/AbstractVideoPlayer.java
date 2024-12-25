@@ -16,8 +16,11 @@
 
 package com.badlogic.gdx.video;
 
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
+
+import java.io.FileNotFoundException;
 
 public abstract class AbstractVideoPlayer implements VideoPlayer {
 	protected TextureFilter minFilter = TextureFilter.Linear;
@@ -31,5 +34,14 @@ public abstract class AbstractVideoPlayer implements VideoPlayer {
 		Texture texture = getTexture();
 		if (texture == null) return;
 		texture.setFilter(minFilter, magFilter);
+	}
+
+	@Override
+	public final boolean play (FileHandle file) throws FileNotFoundException {
+		boolean loaded = load(file);
+		if (loaded) {
+			play();
+		}
+		return loaded;
 	}
 }

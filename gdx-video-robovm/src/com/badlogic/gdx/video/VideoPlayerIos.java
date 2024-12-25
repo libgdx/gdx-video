@@ -65,7 +65,7 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 	AVPlayer player;
 	private volatile boolean playerIsReady;
 	private boolean isLoaded;
-	private boolean pauseRequested;
+	private boolean playRequested;
 	private volatile boolean isPlaying;
 	private boolean isLooping;
 
@@ -140,13 +140,13 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 	private void setLoaded () {
 		if (isLoaded) return;
 		isLoaded = true;
-		if (!pauseRequested) {
-			resume();
+		if (playRequested) {
+			play();
 		}
 	}
 
 	@Override
-	public boolean play (FileHandle file) {
+	public boolean load (FileHandle file) {
 		dispose();
 
 		if (!file.exists()) return false;
@@ -210,6 +210,15 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 		return true;
 	}
 
+	@Override
+	public synchronized void play () {
+		playRequested = true;
+		if (isLoaded) {
+			player.play();
+			isPlaying = true;
+		}
+	}
+
 	protected void updateTextureFromBuffer (CVImageBuffer buffer) {
 		CVPixelBuffer pixelBuffer = buffer.as(CVPixelBuffer.class);
 		long bpr = pixelBuffer.getBytesPerRow();
@@ -254,7 +263,7 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 	@Override
 	public synchronized void pause () {
 		if (!isLoaded) {
-			pauseRequested = true;
+			playRequested = false;
 		} else {
 			player.pause();
 			isPlaying = false;
@@ -263,11 +272,7 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 
 	@Override
 	public synchronized void resume () {
-		pauseRequested = false;
-		if (isLoaded) {
-			player.play();
-			isPlaying = true;
-		}
+		play();
 	}
 
 	@Override
@@ -281,7 +286,7 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 		isPlaying = false;
 		playerIsReady = false;
 		isLoaded = false;
-		pauseRequested = false;
+		playRequested = false;
 
 		audioTrack = null;
 		audioFormat = null;

@@ -116,7 +116,7 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 	private volatile boolean initialized = false;
 	private boolean prepared = false;
 	private boolean stopped = false;
-	private boolean pauseRequested = false;
+	private boolean playRequested = false;
 	private volatile boolean frameAvailable = false;
 	/** If the external should be drawn to the fbo and make it available thru {@link #getTexture()} */
 	public boolean renderToFbo = true;
@@ -186,9 +186,8 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 							fbo = new FrameBuffer(Pixmap.Format.RGB888, player.getVideoWidth(), player.getVideoHeight(), false);
 						}
 						prepared = true;
-						player.start();
-						if (pauseRequested) {
-							player.pause();
+						if (playRequested) {
+							player.start();
 						}
 					}
 				});
@@ -229,13 +228,21 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 	}
 
 	@Override
-	public boolean play (FileHandle file) throws FileNotFoundException {
+	public boolean load (FileHandle file) throws FileNotFoundException {
 		if (!file.exists()) {
 			throw new FileNotFoundException("Could not find file: " + file.path());
 		}
 
 		playInternal(file);
 		return true;
+	}
+
+	@Override
+	public void play () {
+		if (prepared) {
+			player.start();
+		}
+		playRequested = true;
 	}
 
 	/** Get external texture directly without framebuffer
@@ -315,18 +322,12 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 		// If it is running
 		if (prepared) {
 			player.pause();
-		} else {
-			pauseRequested = true;
 		}
 	}
 
 	@Override
 	public void resume () {
-		// If it is running
-		if (prepared) {
-			player.start();
-		}
-		pauseRequested = false;
+		play();
 	}
 
 	@Override

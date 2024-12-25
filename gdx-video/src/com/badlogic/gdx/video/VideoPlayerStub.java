@@ -23,11 +23,16 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.utils.Null;
 
-class VideoPlayerStub implements VideoPlayer {
+class VideoPlayerStub extends AbstractVideoPlayer {
 
 	@Override
-	public boolean play (FileHandle file) throws FileNotFoundException {
-		return true;
+	public boolean load (FileHandle file) throws FileNotFoundException {
+		return false;
+	}
+
+	@Override
+	public void play () {
+
 	}
 
 	@Override

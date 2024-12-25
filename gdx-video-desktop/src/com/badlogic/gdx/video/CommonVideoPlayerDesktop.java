@@ -37,7 +37,7 @@ import com.badlogic.gdx.video.VideoDecoder.VideoDecoderBuffers;
 /** Desktop implementation of the VideoPlayer
  *
  * @author Rob Bogie rob.bogie@codepoke.net */
-abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer implements VideoPlayer {
+abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 	VideoDecoder decoder;
 	Texture texture;
 	Music audio;
@@ -74,7 +74,7 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 	}
 
 	@Override
-	public boolean play (FileHandle file) throws FileNotFoundException {
+	public boolean load (FileHandle file) throws FileNotFoundException {
 		if (file == null) {
 			return false;
 		}
@@ -132,9 +132,12 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 		if (sizeListener != null) {
 			sizeListener.onVideoSize(currentVideoWidth, currentVideoHeight);
 		}
-
-		playing = true;
 		return true;
+	}
+
+	@Override
+	public void play () {
+		playing = true;
 	}
 
 	/** Called by jni to fill in the file buffer.
