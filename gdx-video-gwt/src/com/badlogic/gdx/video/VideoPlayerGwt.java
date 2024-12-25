@@ -25,6 +25,7 @@ import com.badlogic.gdx.utils.Null;
 import com.google.gwt.media.client.Video;
 
 public class VideoPlayerGwt extends AbstractVideoPlayer implements VideoPlayer {
+	private FileHandle currentFile; // Don't remove, used by GWT JSNI
 	private final Video v = Video.createIfSupported();
 	private Texture frame;
 	private int width, height;
@@ -35,6 +36,7 @@ public class VideoPlayerGwt extends AbstractVideoPlayer implements VideoPlayer {
 
 	@Override
 	public boolean load (FileHandle file) {
+		currentFile = file;
 		if (v != null) {
 			v.setSrc(((GwtFileHandle)file).getAssetUrl());
 			v.load();
@@ -112,8 +114,7 @@ public class VideoPlayerGwt extends AbstractVideoPlayer implements VideoPlayer {
 		videoSizeListener = listener;
 	}
 
-	//@off
-	private native void setEndedCaller(CompletionListener listener) /*-{
+	private native void setEndedCaller (CompletionListener listener) /*-{
 		var video = this.@com.badlogic.gdx.video.VideoPlayerGwt::v;
 		var videoElement = video.@com.google.gwt.media.client.Video::getVideoElement()();
 		var videoPlayer = this;
@@ -121,7 +122,6 @@ public class VideoPlayerGwt extends AbstractVideoPlayer implements VideoPlayer {
 			listener.@com.badlogic.gdx.video.VideoPlayer.CompletionListener::onCompletionListener(Lcom/badlogic/gdx/files/FileHandle;)(videoPlayer.@com.badlogic.gdx.video.VideoPlayerGwt::currentFile);
 		};
 	}-*/;
-	//@on
 
 	@Override
 	public void setOnCompletionListener (CompletionListener listener) {
