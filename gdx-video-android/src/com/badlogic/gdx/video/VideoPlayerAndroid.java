@@ -323,6 +323,7 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 		if (prepared) {
 			player.pause();
 		}
+		playRequested = false;
 	}
 
 	@Override
