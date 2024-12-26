@@ -1,4 +1,7 @@
 [submodule "gdx-video-desktop/FFmpeg"]
-	path = gdx-video-desktop/FFmpeg
+	path = gdx-video-desktop/dependencies/FFmpeg
 	url = https://github.com/FFmpeg/FFmpeg.git
 	branch = release/4.3
+[submodule "gdx-video-desktop/dependencies/dav1d"]
+	path = gdx-video-desktop/dependencies/dav1d
+	url = https://code.videolan.org/videolan/dav1d.git
