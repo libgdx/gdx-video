@@ -61,15 +61,20 @@ public class GdxVideoTest extends ApplicationAdapter {
 
 		videoActor = new VideoActor(videoPlayer);
 		videoActor.setBounds(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+		try {
+			videoPlayer.load(getVideoFile());
+		} catch (FileNotFoundException e) {
+			Gdx.app.error("gdx-video", "Oh no!");
+		}
 	}
 
 	@Override
 	public void render () {
 		if (Gdx.input.justTouched()) {
-			try {
-				videoPlayer.play(getVideoFile());
-			} catch (FileNotFoundException e) {
-				Gdx.app.error("gdx-video", "Oh no!");
+			if (videoPlayer.isPlaying()) {
+				videoPlayer.pause();
+			} else {
+				videoPlayer.play();
 			}
 		}
 
@@ -90,7 +95,7 @@ public class GdxVideoTest extends ApplicationAdapter {
 
 	@Override
 	public void resume () {
-		videoPlayer.resume();
+		videoPlayer.play();
 	}
 
 	@Override

@@ -138,6 +138,12 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 	@Override
 	public void play () {
 		playing = true;
+		if (paused) {
+			paused = false;
+			if (audio != null) {
+				audio.play();
+			}
+		}
 	}
 
 	/** Called by jni to fill in the file buffer.
@@ -283,12 +289,7 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 
 	@Override
 	public void resume () {
-		if (paused) {
-			paused = false;
-			if (audio != null) {
-				audio.play();
-			}
-		}
+		play();
 	}
 
 	@Override
