@@ -3,6 +3,7 @@ name: Java CI with Gradle
 on:
   pull_request:
     branches: [ master ]
+  workflow_dispatch:
 
 jobs:
   natives-macos:
@@ -23,7 +24,7 @@ jobs:
       uses: gradle/gradle-build-action@v2
 
     - name: Install additional build dependencies
-      run: brew install nasm
+      run: brew install nasm meson
 
     - name: Build with Gradle
       run: ./gradlew :gdx-video-desktop:buildFFmpegMacosAll :gdx-video-desktop:jnigenBuildMacosAll
@@ -56,7 +57,7 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y --force-yes gcc g++
-        sudo apt install -y --force-yes nasm
+        sudo apt install -y --force-yes nasm meson
         sudo apt install -y --force-yes gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
         sudo apt install -y --force-yes gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf libc6-dev-armhf-cross
 
@@ -90,7 +91,7 @@ jobs:
     - name: Install build dependencies and cross-compilation toolchains
       run: |
         sudo apt update
-        sudo apt install -y --force-yes nasm
+        sudo apt install -y --force-yes nasm meson
         sudo apt install -y --force-yes mingw-w64 lib32z1
 
     - name: Build natives with Gradle

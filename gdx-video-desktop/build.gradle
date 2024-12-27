@@ -53,6 +53,21 @@ String checkCrossPrefix(String crossToolchain) {
     return ""
 }
 
+String checkCrossFile(String buildName, String crossToolchain) {
+    String prefix = checkCrossPrefix(crossToolchain)
+    if(prefix.isEmpty()) {
+        return ""
+    }
+    def options = [
+            "Windows32": "i686-w64-mingw32",
+            "Windows64": "x86_64-w64-mingw32",
+            "LinuxARM64": "aarch64-linux"
+    ]
+    def name = options[buildName]
+    return "dependencies/dav1d/packages/crossfiles/$name.meson"
+}
+
+
 void registerBuild(String buildName, String crossToolchain, String... extraArgs) {
     String av1Dir = "dependencies/build/${buildName.toLowerCase()}/dav1d"
     String ffDir = file("dependencies/build/${buildName.toLowerCase()}/FFmpeg").absolutePath
@@ -67,14 +82,16 @@ void registerBuild(String buildName, String crossToolchain, String... extraArgs)
         doFirst {
             mkdir av1Dir
             String[] crossArgs = []
-            def crossPrefix = checkCrossPrefix(crossToolchain)
-            if(!crossPrefix.isEmpty()) {
-                crossArgs = ["--enable-cross-compile", "--cross-prefix=$crossPrefix"]
+            def crossFile = checkCrossFile(buildName, crossToolchain)
+            if(!crossFile.isEmpty()) {
+                def crosspath = file(crossFile).absolutePath
+                crossArgs = ["--cross-file=$crosspath"]
             }
             project.exec {
                 workingDir av1Dir
                 executable 'meson'
                 args 'setup', '-Denable_tools=false', '-Denable_tests=false'
+                args crossArgs
                 args '../../../dav1d', '--default-library=static'
                 args '--prefix', "$ffDir/ffmpeg_build"
                 args "--libdir=$ffDir/ffmpeg_build/lib"
@@ -118,7 +135,6 @@ void registerBuild(String buildName, String crossToolchain, String... extraArgs)
                 args '--enable-decoder=vorbis', '--enable-decoder=opus'
                 args '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-decoder=av1'
                 args '--enable-libdav1d', '--enable-decoder=libdav1d'
-                args '--pkg-config-flags=--static'
                 args "--extra-cflags=-I$ffDir/ffmpeg_build/include"
                 args "--extra-ldflags=-L$ffDir/ffmpeg_build/lib"
                 args "--prefix=$ffDir/ffmpeg_build"
@@ -128,7 +144,6 @@ void registerBuild(String buildName, String crossToolchain, String... extraArgs)
             }
             project.exec {
                 workingDir ffDir
-                environment['V'] = 1
                 commandLine 'make', '-j16'
             }
             project.exec {
@@ -145,7 +160,7 @@ registerBuild 'Windows64', 'x86_64-w64-mingw32', '--arch=x86_64', '--target-os=m
 
 registerBuild 'Linux64', 'x86_64-linux-gnu', '--arch=x86_64', '--target-os=linux', '--disable-cuda', '--disable-cuvid'
 
-registerBuild 'LinuxARM32', 'arm-linux-gnueabihf', '--arch=arm', '--target-os=linux'
+registerBuild 'LinuxARM32', 'arm-linux-gnueabihf', '--arch=arm', '--target-os=linux', '--disable-decoder=libdav1d'
 registerBuild 'LinuxARM64', 'aarch64-linux-gnu', '--arch=aarch64', '--target-os=linux'
 
 registerBuild 'Macos64', null, '--enable-cross-compile', '--arch=x86_64', '--target-os=darwin', '--cc=clang', '--cxx=clang++', '--dep-cc=clang',
@@ -156,7 +171,7 @@ registerBuild 'MacosARM64', null, '--enable-cross-compile', '--arch=arm64', '--t
 jnigen {
     sharedLibName = "gdx-video-desktop"
     all {
-        headerDirs = ["../dependencies/FFmpeg", "../dependencies/dav1d"]
+        headerDirs = []
         cFlags += " -fvisibility=hidden "
         cppFlags += " -fvisibility=hidden "
         //Using `-lavcodec -lavformat` order on linux drops filesize by half but mingw wont compile???
