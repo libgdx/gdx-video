@@ -48,7 +48,7 @@ public class VideoLoader extends AsynchronousAssetLoader<VideoPlayer, VideoLoade
 		try {
 			videoPlayer.load(file);
 		} catch (FileNotFoundException ignored) {
-			Gdx.app.error(fileName, "vid not found");
+			Gdx.app.error("gdx-video", "Video file " + fileName + " not found");
 		}
 	}
 
