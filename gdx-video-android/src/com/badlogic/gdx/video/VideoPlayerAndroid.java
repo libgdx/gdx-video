@@ -28,7 +28,6 @@ import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 import android.view.Surface;
 import com.badlogic.gdx.Files.FileType;
 import com.badlogic.gdx.Gdx;
@@ -128,9 +127,6 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 	/** Used for sending mediaplayer tasks to the Main Looper */
 	private static Handler handler;
 
-	/** Lock used for waiting if the player was not yet created. */
-	final Object lock = new Object();
-
 	public VideoPlayerAndroid () {
 		initializeMediaPlayer();
 		queueSetupStep();
@@ -196,7 +192,7 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 		player.setOnErrorListener(new OnErrorListener() {
 			@Override
 			public boolean onError (MediaPlayer mp, int what, int extra) {
-				Log.e("VideoPlayer", String.format("Error occured: %d, %d\n", what, extra));
+				Gdx.app.error("gdx-video", String.format("Error occurred: %d, %d\n", what, extra));
 				return false;
 			}
 		});
@@ -205,7 +201,6 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 			@Override
 			public void onCompletion (MediaPlayer mp) {
 				if (isLooping()) return;
-				prepared = false;
 				if (completionListener != null) {
 					completionListener.onCompletionListener(file);
 				}
@@ -223,7 +218,7 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 			}
 			player.prepareAsync();
 		} catch (IOException e) {
-			e.printStackTrace();
+			Gdx.app.error("gdx-video", "Error loading video file: " + file.path(), e);
 		}
 	}
 

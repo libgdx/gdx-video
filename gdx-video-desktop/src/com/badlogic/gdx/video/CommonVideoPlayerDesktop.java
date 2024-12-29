@@ -125,7 +125,7 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 				return false;
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			Gdx.app.error("gdx-video", "Error loading video", e);
 			return false;
 		}
 
@@ -143,6 +143,9 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 			if (audio != null) {
 				audio.play();
 			}
+		}
+		if (decoder.nextVideoFrame() == null && !isFirstFrame) {
+			resetVideo();
 		}
 	}
 
@@ -210,14 +213,7 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 				} else if (isFirstFrame) {
 					return false;
 				} else if (looping) {
-					try {
-						// NOTE: this just creates a new decoder instead of reusing the existing one.
-						float volume = getVolume();
-						play(currentFile);
-						setVolume(volume);
-					} catch (FileNotFoundException e) {
-						throw new RuntimeException(e);
-					}
+					resetVideo();
 					return false;
 				} else {
 					playing = false;
@@ -232,6 +228,18 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 			return newFrame;
 		}
 		return false;
+	}
+
+	private void resetVideo () {
+		try {
+			// NOTE: this just creates a new decoder instead of reusing the existing one.
+			float volume = getVolume();
+			load(currentFile);
+			play();
+			setVolume(volume);
+		} catch (FileNotFoundException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Override
@@ -268,7 +276,7 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 			try {
 				inputStream.close();
 			} catch (IOException e) {
-				e.printStackTrace();
+				Gdx.app.error("gdx-video", "Error closing input stream", e);
 			}
 			inputStream = null;
 		}

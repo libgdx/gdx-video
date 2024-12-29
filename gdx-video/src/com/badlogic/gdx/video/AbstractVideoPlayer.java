@@ -37,6 +37,7 @@ public abstract class AbstractVideoPlayer implements VideoPlayer {
 	}
 
 	@Override
+	@Deprecated
 	public final boolean play (FileHandle file) throws FileNotFoundException {
 		boolean loaded = load(file);
 		if (loaded) {
