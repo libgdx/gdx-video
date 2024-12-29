@@ -1,0 +1,23 @@
+[binaries]
+c = ['clang', '-arch', 'arm64']
+cpp = ['clang++', '-arch', 'arm64']
+objc = ['clang', '-arch', 'arm64']
+objcpp = ['clang++', '-arch', 'arm64']
+ar = 'ar'
+strip = 'strip'
+
+[built-in options]
+c_args = ['-mmacos-version-min=10.11']
+cpp_args = ['-mmacos-version-min=10.11']
+c_link_args = ['-mmacos-version-min=10.11']
+cpp_link_args = ['-mmacos-version-min=10.11']
+objc_args = ['-mmacos-version-min=10.11']
+objcpp_args = ['-mmacos-version-min=10.11']
+
+[host_machine]
+system = 'darwin'
+subsystem = 'macos'
+kernel = 'xnu'
+cpu_family = 'aarch64'
+cpu = 'aarch64'
+endian = 'little'
