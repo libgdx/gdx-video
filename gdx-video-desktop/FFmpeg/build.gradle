@@ -110,7 +110,7 @@ void registerBuild(String buildName, String crossToolchain, String... extraArgs)
                 environment["PKG_CONFIG_PATH"] = "$outDir/lib/pkgconfig"
                 executable '../../../../src/FFmpeg/configure'
                 args '--pkg-config=pkg-config', '--pkg-config-flags=--static'
-                args '--disable-autodetect'//, '--extra-libs=-lpthread'
+                args '--disable-autodetect'
                 args '--enable-pic', '--disable-symver', '--disable-doc', '--disable-shared', '--enable-static'
                 args crossArgs
                 args '--disable-everything'
