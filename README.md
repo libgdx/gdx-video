@@ -5,7 +5,7 @@
 [![Sonatype Nexus (Releases)](https://img.shields.io/nexus/r/com.badlogicgames.gdx-video/gdx-video?nexusVersion=2&server=https%3A%2F%2Foss.sonatype.org&label=release)](https://search.maven.org/artifact/com.badlogicgames.gdx-video/gdx-video)
 [![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/com.badlogicgames.gdx-video/gdx-video?server=https%3A%2F%2Foss.sonatype.org&label=snapshot)](https://oss.sonatype.org/#nexus-search;gav~com.badlogicgames.gdx-video~gdx-video~~~~kw,versionexpand)
 
-A libGDX cross platform video rendering extension
+A libGDX cross-platform video rendering extension
 
 ## Contents
 * [Getting Started](#getting-started)
@@ -72,23 +72,24 @@ First, get a video player for the current platform using
 VideoPlayer player = VideoPlayerCreator.createVideoPlayer();
 ```
 
-Then, open a video from your game's assets.
+Then, load a video from your game's assets.
 
 ```java
 FileHandle file = Gdx.files.internal("video.webm");
-player.play(file);
+player.load(file);
 ```
 
-The file gets loaded and starts playing as soon as the first frames
-are decoded. Note that loading a file ahead of time is not supported
-yet. As a workaround, try to `pause()` the video once it has
-started playing and `resume()` playback later.
+Then you can play the video:
+
+```java
+player.play();
+```
 
 Once the video has fully loaded, you may retrieve additional
 information about the file.
 
 ```java
-if(player.isBuffered()) {
+if (player.isBuffered()) {
     int videoWidth = player.getVideoWidth();
     int videoHeight = player.getVideoHeight();
 }
@@ -177,7 +178,7 @@ See `build.gradle` file for current version to use in your dependencies.
 
 ### Cross-compilation on MacOS
 
-Install the cross compilers using [homebrew](https://brew.sh) with the commands
+Install the cross-compilers using [homebrew](https://brew.sh) with the commands
 ~~~
 brew install mingw-w64 nasm
 brew tap messense/macos-cross-toolchains

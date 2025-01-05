@@ -38,11 +38,22 @@ public interface VideoPlayer extends Disposable {
 	}
 
 	/** This function will prepare the VideoPlayer to play the given file. If a video is already played, it will be stopped, and
+	 * the new video will be loaded.
+	 * @param file The file containing the video which should be played.
+	 * @return Whether loading the file was successful.
+	 * @throws FileNotFoundException if the file does not exist */
+	boolean load (FileHandle file) throws FileNotFoundException;
+
+	/** This function will start playing the video. */
+	void play ();
+
+	/** This function will prepare the VideoPlayer to play the given file. If a video is already played, it will be stopped, and
 	 * the new video will be loaded. The video starts playing as soon as it is loaded.
 	 *
 	 * @throws FileNotFoundException if the file does not exist
 	 * @param file The file containing the video which should be played.
 	 * @return Whether loading the file was successful. */
+	@Deprecated
 	boolean play (FileHandle file) throws FileNotFoundException;
 
 	/** This function needs to be called every frame, so that the player can update all the buffers and you can draw the frame.
@@ -65,6 +76,7 @@ public interface VideoPlayer extends Disposable {
 	void pause ();
 
 	/** This resumes the video after it is paused. */
+	@Deprecated
 	void resume ();
 
 	/** This will stop playing the file, and implicitly clears all buffers and invalidate resources used. */

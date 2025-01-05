@@ -37,7 +37,7 @@ import com.badlogic.gdx.video.VideoDecoder.VideoDecoderBuffers;
 /** Desktop implementation of the VideoPlayer
  *
  * @author Rob Bogie rob.bogie@codepoke.net */
-abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer implements VideoPlayer {
+abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 	VideoDecoder decoder;
 	Texture texture;
 	Music audio;
@@ -74,7 +74,7 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 	}
 
 	@Override
-	public boolean play (FileHandle file) throws FileNotFoundException {
+	public boolean load (FileHandle file) throws FileNotFoundException {
 		if (file == null) {
 			return false;
 		}
@@ -125,16 +125,28 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 				return false;
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			Gdx.app.error("gdx-video", "Error loading video", e);
 			return false;
 		}
 
 		if (sizeListener != null) {
 			sizeListener.onVideoSize(currentVideoWidth, currentVideoHeight);
 		}
-
-		playing = true;
 		return true;
+	}
+
+	@Override
+	public void play () {
+		playing = true;
+		if (paused) {
+			paused = false;
+			if (audio != null) {
+				audio.play();
+			}
+		}
+		if (decoder.nextVideoFrame() == null && !isFirstFrame) {
+			resetVideo();
+		}
 	}
 
 	/** Called by jni to fill in the file buffer.
@@ -201,14 +213,7 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 				} else if (isFirstFrame) {
 					return false;
 				} else if (looping) {
-					try {
-						// NOTE: this just creates a new decoder instead of reusing the existing one.
-						float volume = getVolume();
-						play(currentFile);
-						setVolume(volume);
-					} catch (FileNotFoundException e) {
-						throw new RuntimeException(e);
-					}
+					resetVideo();
 					return false;
 				} else {
 					playing = false;
@@ -223,6 +228,18 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 			return newFrame;
 		}
 		return false;
+	}
+
+	private void resetVideo () {
+		try {
+			// NOTE: this just creates a new decoder instead of reusing the existing one.
+			float volume = getVolume();
+			load(currentFile);
+			play();
+			setVolume(volume);
+		} catch (FileNotFoundException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Override
@@ -259,7 +276,7 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 			try {
 				inputStream.close();
 			} catch (IOException e) {
-				e.printStackTrace();
+				Gdx.app.error("gdx-video", "Error closing input stream", e);
 			}
 			inputStream = null;
 		}
@@ -280,12 +297,7 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer imple
 
 	@Override
 	public void resume () {
-		if (paused) {
-			paused = false;
-			if (audio != null) {
-				audio.play();
-			}
-		}
+		play();
 	}
 
 	@Override

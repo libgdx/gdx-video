@@ -28,7 +28,6 @@ import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 import android.view.Surface;
 import com.badlogic.gdx.Files.FileType;
 import com.badlogic.gdx.Gdx;
@@ -116,7 +115,7 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 	private volatile boolean initialized = false;
 	private boolean prepared = false;
 	private boolean stopped = false;
-	private boolean pauseRequested = false;
+	private boolean playRequested = false;
 	private volatile boolean frameAvailable = false;
 	/** If the external should be drawn to the fbo and make it available thru {@link #getTexture()} */
 	public boolean renderToFbo = true;
@@ -127,9 +126,6 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 
 	/** Used for sending mediaplayer tasks to the Main Looper */
 	private static Handler handler;
-
-	/** Lock used for waiting if the player was not yet created. */
-	final Object lock = new Object();
 
 	public VideoPlayerAndroid () {
 		initializeMediaPlayer();
@@ -186,9 +182,8 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 							fbo = new FrameBuffer(Pixmap.Format.RGB888, player.getVideoWidth(), player.getVideoHeight(), false);
 						}
 						prepared = true;
-						player.start();
-						if (pauseRequested) {
-							player.pause();
+						if (playRequested) {
+							player.start();
 						}
 					}
 				});
@@ -197,7 +192,7 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 		player.setOnErrorListener(new OnErrorListener() {
 			@Override
 			public boolean onError (MediaPlayer mp, int what, int extra) {
-				Log.e("VideoPlayer", String.format("Error occured: %d, %d\n", what, extra));
+				Gdx.app.error("gdx-video", String.format("Error occurred: %d, %d\n", what, extra));
 				return false;
 			}
 		});
@@ -206,7 +201,6 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 			@Override
 			public void onCompletion (MediaPlayer mp) {
 				if (isLooping()) return;
-				prepared = false;
 				if (completionListener != null) {
 					completionListener.onCompletionListener(file);
 				}
@@ -224,18 +218,26 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 			}
 			player.prepareAsync();
 		} catch (IOException e) {
-			e.printStackTrace();
+			Gdx.app.error("gdx-video", "Error loading video file: " + file.path(), e);
 		}
 	}
 
 	@Override
-	public boolean play (FileHandle file) throws FileNotFoundException {
+	public boolean load (FileHandle file) throws FileNotFoundException {
 		if (!file.exists()) {
 			throw new FileNotFoundException("Could not find file: " + file.path());
 		}
 
 		playInternal(file);
 		return true;
+	}
+
+	@Override
+	public void play () {
+		if (prepared) {
+			player.start();
+		}
+		playRequested = true;
 	}
 
 	/** Get external texture directly without framebuffer
@@ -315,18 +317,13 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 		// If it is running
 		if (prepared) {
 			player.pause();
-		} else {
-			pauseRequested = true;
 		}
+		playRequested = false;
 	}
 
 	@Override
 	public void resume () {
-		// If it is running
-		if (prepared) {
-			player.start();
-		}
-		pauseRequested = false;
+		play();
 	}
 
 	@Override
