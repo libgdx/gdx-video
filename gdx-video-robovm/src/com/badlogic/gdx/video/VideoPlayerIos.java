@@ -161,6 +161,9 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 		asset.loadTracksWithMediaType(AVMediaType.Video.toString(), new VoidBlock2<NSArray<?>, NSError>() {
 			@Override
 			public void invoke (NSArray<?> nsObjects, NSError nsError) {
+				if (nsObjects == null) {
+					return;
+				}
 				for (NSObject obj : nsObjects) {
 					AVAssetTrack track = obj.as(AVAssetTrack.class);
 					onVideoTrackLoaded(track);
@@ -171,6 +174,9 @@ public class VideoPlayerIos extends AbstractVideoPlayer implements VideoPlayer {
 		asset.loadTracksWithMediaType(AVMediaType.Audio.toString(), new VoidBlock2<NSArray<?>, NSError>() {
 			@Override
 			public void invoke (NSArray<?> nsObjects, NSError nsError) {
+				if (nsObjects == null) {
+					return;
+				}
 				for (NSObject obj : nsObjects) {
 					AVAssetTrack track = obj.as(AVAssetTrack.class);
 					onAudioTrackLoaded(track);
