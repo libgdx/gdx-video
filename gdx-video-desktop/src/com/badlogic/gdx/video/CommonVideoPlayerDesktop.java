@@ -297,7 +297,9 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 
 	@Override
 	public void resume () {
-		play();
+		if (decoder != null) {
+			play();
+		}
 	}
 
 	@Override
