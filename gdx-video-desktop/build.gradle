@@ -32,149 +32,66 @@ dependencies {
 
 apply plugin: "com.badlogicgames.gdx.gdx-jnigen"
 
-tasks.register('cleanFFmpeg')
-clean.configure {
-    dependsOn 'cleanFFmpeg'
-}
-
-String checkCrossPrefix(String crossToolchain) {
-    def tc = crossToolchain
-    if (tc == null || System.getProperty("os.name").startsWith("Win")) return ""
-    def result = project.exec {
-        ignoreExitValue = true
-        commandLine "bash", "-l", "-c",
-            "(command -v $tc-g++ && command -v $tc-ar && command -v $tc-ld)>/dev/null"
-    }
-    if(result.getExitValue() == 0) {
-        return "$tc-"
-    }
-    return ""
-}
-
-void registerBuild(String buildName, String crossToolchain, String... extraArgs) {
-    String buildDir = "FFmpeg/build-${buildName.toLowerCase()}"
-    tasks.register("cleanFFmpeg$buildName", Delete) {
-        delete buildDir
-    }
-    cleanFFmpeg.configure {
-        dependsOn "cleanFFmpeg$buildName"
-    }
-    tasks.register("buildFFmpeg$buildName") {
-        doFirst {
-            mkdir buildDir
-            String[] crossArgs = []
-            def crossPrefix = checkCrossPrefix(crossToolchain)
-            if(!crossPrefix.isEmpty()) {
-                crossArgs = ["--enable-cross-compile", "--cross-prefix=$crossPrefix"]
-            }
-            project.exec {
-                workingDir buildDir
-                executable '../configure'
-                args '--enable-pic', '--disable-symver', '--disable-doc', '--disable-shared', '--enable-static'
-                args crossArgs
-                args '--disable-everything'
-                args '--enable-protocol=file', '--enable-filter=aresample', '--enable-filter=deshake'
-                args '--enable-demuxer=ogg', '--enable-demuxer=matroska'
-                args '--enable-decoder=vorbis', '--enable-decoder=opus'
-                args '--enable-decoder=vp8', '--enable-decoder=vp9', '--enable-decoder=theora', '--enable-decoder=av1'
-                // Uncomment the following line for MP4 video support:
-                // args '--enable-demuxer=mov', '--enable-decoder=aac', '--enable-decoder=h264', '--enable-decoder=hevc'
-                args extraArgs
-            }
-            project.exec {
-                workingDir buildDir
-                commandLine 'make', '-j16'
-            }
-        }
-        outputs.upToDateWhen { file("$buildDir/libavformat/libavformat.a").exists() }
-    }
-}
-
-registerBuild 'Windows32', 'i686-w64-mingw32', '--arch=x86', '--target-os=mingw32'
-registerBuild 'Windows64', 'x86_64-w64-mingw32', '--arch=x86_64', '--target-os=mingw32'
-
-registerBuild 'Linux64', 'x86_64-linux-gnu', '--arch=x86_64', '--target-os=linux', '--disable-cuda', '--disable-cuvid'
-
-registerBuild 'LinuxARM32', 'arm-linux-gnueabihf', '--arch=arm', '--target-os=linux'
-registerBuild 'LinuxARM64', 'aarch64-linux-gnu', '--arch=aarch64', '--target-os=linux'
-
-registerBuild 'Macos64', null, '--enable-cross-compile', '--arch=x86_64', '--target-os=darwin', '--cc=clang', '--cxx=clang++', '--dep-cc=clang',
-        '--extra-cflags=-mmacosx-version-min=10.11 -arch x86_64', '--extra-cxxflags=-mmacosx-version-min=10.11 -arch x86_64', '--extra-ldflags=-mmacosx-version-min=10.11 -arch x86_64'
-registerBuild 'MacosARM64', null, '--enable-cross-compile', '--arch=arm64', '--target-os=darwin', '--cc=clang', '--cxx=clang++', '--dep-cc=clang',
-        '--extra-cflags=-mmacosx-version-min=10.11 -arch arm64', '--extra-cxxflags=-mmacosx-version-min=10.11 -arch arm64', '--extra-ldflags=-mmacosx-version-min=10.11 -arch arm64'
-
 jnigen {
     sharedLibName = "gdx-video-desktop"
     all {
-        headerDirs = ["../FFmpeg"]
+        headerDirs = []
         cFlags += " -fvisibility=hidden "
         cppFlags += " -fvisibility=hidden "
         //Using `-lavcodec -lavformat` order on linux drops filesize by half but mingw wont compile???
-        libraries += " -lavformat -lavcodec -lavutil -lswscale -lswresample -lpthread "
+        libraries += " -lavformat -lavcodec -lavutil -lswscale -lswresample -lpthread -ldav1d"
     }
     def genLibs = { String buildName ->
-        String libraries = ''
-        String absPath = file("FFmpeg/build-$buildName").absolutePath
-        libraries += " -L$absPath/libavcodec"
-        libraries += " -L$absPath/libavformat"
-        libraries += " -L$absPath/libavutil"
-        libraries += " -L$absPath/libswscale"
-        libraries += " -L$absPath/libswresample"
-        return libraries
+        String outPath = file("FFmpeg/build/$buildName").absolutePath
+        return " -L$outPath/lib"
+    }
+    def genHeaders = { String buildName ->
+        String outPath = file("FFmpeg/build/$buildName").absolutePath
+        return [ "$outPath/include" ]
     }
 
     add(Windows, x32) {
-        headerDirs += "../FFmpeg/build-windows32/"
+        headerDirs += genHeaders("windows32")
         cppFlags += " -DWIN32 "
         libraries += genLibs("windows32") + " -lbcrypt -lws2_32"
     }
     add(Windows, x64) {
-        headerDirs += "../FFmpeg/build-windows64/"
+        headerDirs += genHeaders("windows64")
         cppFlags += " -DWIN32 "
         libraries += genLibs("windows64") + " -lbcrypt -lws2_32"
     }
     add(Linux, x64) {
-        headerDirs += "../FFmpeg/build-linux64/"
+        headerDirs += genHeaders("linux64")
         libraries += genLibs("linux64")
-        compilerPrefix = checkCrossPrefix('x86_64-linux-gnu')
+        if(os.name() != "Linux") {
+            compilerPrefix = 'x86_64-linux-gnu'
+        }
         linkerFlags += " -Wl,-Bsymbolic "
     }
     add(Linux, x32, ARM) {
-        headerDirs += "../FFmpeg/build-linuxarm32/"
+        headerDirs += genHeaders("linuxarm32")
         libraries += genLibs("linuxarm32")
         linkerFlags += " -Wl,-Bsymbolic "
     }
     add(Linux, x64, ARM) {
-        headerDirs += "../FFmpeg/build-linuxarm64/"
+        headerDirs += genHeaders("linuxarm64")
         libraries += genLibs("linuxarm64")
         linkerFlags += " -Wl,-Bsymbolic "
     }
     add(MacOsX, x64) {
-        headerDirs += "../FFmpeg/build-macos64/"
-        libraries += genLibs("macos64") + " -liconv -lbz2 -lz -framework CoreFoundation -framework CoreVideo"
+        headerDirs += genHeaders("macos64")
+        libraries += genLibs("macos64") + " -liconv -lbz2 -lz -framework CoreFoundation -framework CoreVideo -framework CoreMedia -framework VideoToolbox"
         cFlags += " -mmacosx-version-min=10.11"
         cppFlags += " -mmacosx-version-min=10.11"
         linkerFlags += " -mmacosx-version-min=10.11"
     }
     add(MacOsX, x64, ARM) {
-        headerDirs += "../FFmpeg/build-macosarm64/"
-        libraries += genLibs("macosarm64") + " -liconv -lbz2 -lz -framework CoreFoundation -framework CoreVideo"
+        headerDirs += genHeaders("macosarm64")
+        libraries += genLibs("macosarm64") + " -liconv -lbz2 -lz -framework CoreFoundation -framework CoreVideo -framework CoreMedia -framework VideoToolbox"
         cFlags += " -mmacosx-version-min=10.11"
         cppFlags += " -mmacosx-version-min=10.11"
         linkerFlags += " -mmacosx-version-min=10.11"
     }
-}
-
-tasks.register('buildFFmpegWindowsAll') {
-    dependsOn buildFFmpegWindows32, buildFFmpegWindows64
-}
-
-tasks.register('buildFFmpegLinuxAll') {
-    dependsOn buildFFmpegLinux64, buildFFmpegLinuxARM32, buildFFmpegLinuxARM64
-}
-
-tasks.register('buildFFmpegMacosAll') {
-    dependsOn buildFFmpegMacos64, buildFFmpegMacosARM64
 }
 
 tasks.register('jnigenBuildWindowsAll') {

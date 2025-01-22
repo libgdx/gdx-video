@@ -1,2 +1,2 @@
-include "gdx-video", "gdx-video-desktop", "gdx-video-desktop:gdx-video-lwjgl", "gdx-video-desktop:gdx-video-lwjgl3", "gdx-video-android", "gdx-video-gwt", "gdx-video-robovm", "test:core", "test:android", "test:desktop", "test:lwjgl3", "test:ios", "test:html"
+include "gdx-video", "gdx-video-desktop", "gdx-video-desktop:FFmpeg", "gdx-video-desktop:gdx-video-lwjgl", "gdx-video-desktop:gdx-video-lwjgl3", "gdx-video-android", "gdx-video-gwt", "gdx-video-robovm", "test:core", "test:android", "test:desktop", "test:lwjgl3", "test:ios", "test:html"
 project(":gdx-video").name = "gdx-video-core"

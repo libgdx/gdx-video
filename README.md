@@ -112,26 +112,31 @@ your game on real devices.
 
 ### File format and codec
 
-| Format                 | Desktop  | Android  | iOS     | Web |
-|------------------------|----------|----------|---------|-----|
-| MP4 (H.264/AVC + AAC)  | ❌ *      | ✅ *      | ✅       | ⚠️  |
-| MP4 (H.265/HEVC + AAC) | ❌ *      | ⚠️ > 5.0 | ⚠️ > 11 | ⚠️  |
-| WebM (VP8 + Vorbis)    | ✅        | ✅        | ❌       | ✅   |
-| WebM (VP9 + Opus)      | ✅        | ⚠️ > 5.0 | ❌       | ❔   |
-| MKV (AV1 + Opus)       | ✅        | ⚠️ > 10  | ❌       | ⚠️  |
+| Format                 | Desktop  | Android  | iOS    | Web |
+|------------------------|----------|----------|--------|-----|
+| MP4 (H.264/AVC + AAC)  | ❌ *      | ✅        | ✅      | ⚠️  |
+| MP4 (H.265/HEVC + AAC) | ❌ *      | ⚠️ > 5.0 | ✅ > 11 | ⚠️  |
+| WebM (VP8 + Vorbis)    | ✅        | ✅        | ❌      | ✅   |
+| WebM (VP9 + Opus)      | ✅        | ⚠️ > 5.0 | ❌      | ❔   |
+| MKV (AV1 + Opus)       | ✅        | ⚠️ > 10  | ❌ *   | ⚠️  |
 
 #### Additional notes
 
 **Desktop:** Additional formats and codecs can be enabled when compiling 
-gdx-video yourself. See the file [gdx-video-desktop/build.gradle](gdx-video-desktop/build.gradle).
+gdx-video yourself. See the file [gdx-video-desktop/FFmpeg/build.gradle](gdx-video-desktop/FFmpeg/build.gradle).
 
-**iOS**: H.265 support notes from apple: <https://support.apple.com/de-de/HT207022>
+**iOS**: H.265 is supported since iOS 11. AV1 requires a current high-end
+device with a hardware decoder.
 
 **Android**: See the following webpage for officially supported media formats: 
 <https://developer.android.com/guide/topics/media/platform/supported-formats>.
 Note that this support table is not always accurate, especially for devices
-and emulator images without Google Play Services. When in doubt, use VP8, VP9
-and Vorbis.
+and emulator images without Google Play Services. 
+
+In practice, H.264 is a good choice for physical Android tablets / smartphones
+as most devices (including old and cheap ones) have hardware decoding support.
+Remember to dispose a VideoPlayer before loading a new one, as some devices
+fail to load the next video otherwise.
 
 ### Resolution and framerate
 
