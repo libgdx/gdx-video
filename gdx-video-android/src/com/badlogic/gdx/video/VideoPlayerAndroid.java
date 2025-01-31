@@ -122,6 +122,8 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 
 	VideoSizeListener sizeListener;
 	CompletionListener completionListener;
+
+	private boolean currentLooping = false;
 	private float currentVolume = 1.0f;
 
 	/** Used for sending mediaplayer tasks to the Main Looper */
@@ -182,6 +184,8 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 							fbo = new FrameBuffer(Pixmap.Format.RGB888, player.getVideoWidth(), player.getVideoHeight(), false);
 						}
 						prepared = true;
+						player.setVolume(currentVolume, currentVolume);
+						player.setLooping(currentLooping);
 						if (playRequested) {
 							player.start();
 						}
@@ -299,7 +303,7 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 
 	@Override
 	public void stop () {
-		if (player != null && player.isPlaying()) {
+		if (player != null && isPlaying()) {
 			player.stop();
 			player.reset();
 		}
@@ -315,7 +319,7 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 	@Override
 	public void pause () {
 		// If it is running
-		if (prepared) {
+		if (isPlaying()) {
 			player.pause();
 		}
 		playRequested = false;
@@ -364,23 +368,34 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 
 	@Override
 	public int getVideoWidth () {
+		if (!prepared) {
+			return 0;
+		}
 		return player.getVideoWidth();
 	}
 
 	@Override
 	public int getVideoHeight () {
+		if (!prepared) {
+			return 0;
+		}
 		return player.getVideoHeight();
 	}
 
 	@Override
 	public boolean isPlaying () {
+		if (!prepared) {
+			return false;
+		}
 		return player.isPlaying();
 	}
 
 	@Override
 	public void setVolume (float volume) {
 		currentVolume = volume;
-		player.setVolume(volume, volume);
+		if (prepared) {
+			player.setVolume(volume, volume);
+		}
 	}
 
 	@Override
@@ -390,16 +405,22 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 
 	@Override
 	public void setLooping (boolean looping) {
-		player.setLooping(looping);
+		currentLooping = looping;
+		if (prepared) {
+			player.setLooping(looping);
+		}
 	}
 
 	@Override
 	public boolean isLooping () {
-		return player.isLooping();
+		return currentLooping;
 	}
 
 	@Override
 	public int getCurrentTimestamp () {
+		if (!prepared) {
+			return 0;
+		}
 		return player.getCurrentPosition();
 	}
 }
