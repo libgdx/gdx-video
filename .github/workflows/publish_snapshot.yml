@@ -36,9 +36,9 @@ jobs:
       run: ./gradlew :gdx-video-desktop:FFmpeg:buildFFmpegMacosAll :gdx-video-desktop:jnigenBuildMacosAll
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: desktop-natives
+        name: natives-macos
         path: gdx-video-desktop/libs/**/*.dylib
         if-no-files-found: error
 
@@ -71,9 +71,9 @@ jobs:
       run: ./gradlew :gdx-video-desktop:FFmpeg:buildFFmpegLinuxAll :gdx-video-desktop:jnigenBuildLinuxAll
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: desktop-natives
+        name: natives-linux
         path: gdx-video-desktop/libs/**/*.so
         if-no-files-found: error
 
@@ -104,9 +104,9 @@ jobs:
       run: ./gradlew :gdx-video-desktop:FFmpeg:buildFFmpegWindowsAll :gdx-video-desktop:jnigenBuildWindowsAll
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: desktop-natives
+        name: natives-windows
         path: gdx-video-desktop/libs/**/*.dll
         if-no-files-found: error
 
@@ -134,11 +134,12 @@ jobs:
     - name: Setup Gradle
       uses: gradle/gradle-build-action@v2
 
-    - name: Download desktop-natives artifact
-      uses: actions/download-artifact@v3
+    - name: Download individual natives artifacts
+      uses: actions/download-artifact@v4
       with:
-        name: desktop-natives
+        pattern: natives-*
         path: gdx-video-desktop/libs
+        merge-multiple: true
 
     - name: Create JAR with natives for desktop
       run: ./gradlew jnigenJarNativesDesktop --info
