@@ -10,7 +10,6 @@ android {
     namespace = 'com.badlogic.gdx.video'
 
     compileSdkVersion = project.compileSdk
-    buildToolsVersion = project.buildTools
 
     defaultConfig {
         aarMetadata {
