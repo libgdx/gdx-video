@@ -34,7 +34,7 @@ class RawMusic extends OpenALMusic {
 		this.decoder = decoder;
 		backBuffer = buffer;
 		backBuffer.position(backBuffer.limit());
-		setup(channels, sampleRate);
+		setup(channels, 16, sampleRate);
 	}
 
 	@Override
