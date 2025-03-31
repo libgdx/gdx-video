@@ -7,7 +7,6 @@ buildscript {
 apply plugin: 'com.android.application'
 
 android {
-	buildToolsVersion = project.buildTools
 	compileSdkVersion = project.compileSdk
 	namespace = 'com.badlogic.gdx.video.test'
 	sourceSets {
