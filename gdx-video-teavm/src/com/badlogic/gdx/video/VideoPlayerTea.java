@@ -22,9 +22,8 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.utils.Null;
-import com.github.xpenatan.gdx.backends.teavm.TeaFileHandle;
 import com.github.xpenatan.gdx.backends.teavm.TeaGL20;
-import com.github.xpenatan.gdx.backends.teavm.dom.HTMLVideoElementWrapper;
+import com.github.xpenatan.gdx.backends.teavm.assetloader.AssetInstance;
 import org.teavm.jso.browser.Window;
 import org.teavm.jso.dom.html.HTMLDocument;
 import org.teavm.jso.dom.html.HTMLVideoElement;
@@ -47,7 +46,7 @@ public class VideoPlayerTea extends AbstractVideoPlayer implements VideoPlayer {
 	public boolean load (FileHandle file) throws FileNotFoundException {
 		currentFile = file;
 		if (v != null) {
-			v.setSrc(((TeaFileHandle)file).getAssetUrl());
+			v.setSrc(AssetInstance.getLoaderInstance().getAssetUrl() + file.path());
 			v.load();
 			return true;
 		}
@@ -80,8 +79,7 @@ public class VideoPlayerTea extends AbstractVideoPlayer implements VideoPlayer {
 					frame.setFilter(minFilter, magFilter);
 				}
 				frame.bind();
-				((TeaGL20)Gdx.gl).gl.texImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, GL20.GL_RGB, GL20.GL_UNSIGNED_BYTE,
-					(HTMLVideoElementWrapper)v.cast());
+				((TeaGL20)Gdx.gl).gl.texImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, GL20.GL_RGB, GL20.GL_UNSIGNED_BYTE, v);
 				return true;
 			}
 		}
@@ -125,7 +123,7 @@ public class VideoPlayerTea extends AbstractVideoPlayer implements VideoPlayer {
 
 	@Override
 	public void setOnCompletionListener (CompletionListener listener) {
-		v.addEventListener("ended", e -> {
+		v.onEvent("end", e -> {
 			if (listener != null) {
 				listener.onCompletionListener(currentFile);
 			}
