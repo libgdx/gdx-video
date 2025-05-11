@@ -43,7 +43,7 @@ jobs:
         if-no-files-found: error
 
   natives-linux:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v3
       with:
@@ -78,7 +78,7 @@ jobs:
         if-no-files-found: error
 
   natives-windows:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v3
       with:
@@ -115,7 +115,7 @@ jobs:
     - natives-macos
     - natives-linux
     - natives-windows
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
         ORG_GRADLE_PROJECT_NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
         ORG_GRADLE_PROJECT_NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
