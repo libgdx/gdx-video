@@ -27,7 +27,7 @@ dependencies {
   implementation "org.teavm:teavm-jso:$teaVMVersion"
   implementation "org.teavm:teavm-tooling:$teaVMVersion"
   implementation project(':test:core')
-
+  implementation project(':gdx-video-teavm')
 }
 
 tasks.register("buildJavaScript", JavaExec) {
