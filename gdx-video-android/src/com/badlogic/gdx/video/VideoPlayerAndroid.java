@@ -108,7 +108,6 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 	private SurfaceTexture videoTexture;
 	private Surface surface;
 	private FrameBuffer fbo;
-	private Texture frame;
 	private ImmediateModeRenderer20 renderer;
 
 	private MediaPlayer player;
@@ -149,7 +148,6 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 
 	private void playInternal (final FileHandle file) {
 		prepared = false;
-		frame = null;
 		stopped = false;
 
 		// If we haven't finished loading the media player yet, wait without blocking.
@@ -182,6 +180,11 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 						}
 						if (fbo == null) {
 							fbo = new FrameBuffer(Pixmap.Format.RGB888, player.getVideoWidth(), player.getVideoHeight(), false);
+							fbo.getColorBufferTexture().setFilter(minFilter, magFilter);
+							fbo.begin();
+							Gdx.gl.glClearColor(0, 0, 0, 1);
+							Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+							fbo.end();
 						}
 						prepared = true;
 						player.setVolume(currentVolume, currentVolume);
@@ -279,10 +282,6 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 		renderer.vertex(1, 1, 0);
 		renderer.end();
 		fbo.end();
-		if (frame == null) {
-			frame = fbo.getColorBufferTexture();
-			frame.setFilter(minFilter, magFilter);
-		}
 
 		return true;
 	}
@@ -290,7 +289,7 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 	@Override
 	@Null
 	public Texture getTexture () {
-		return frame;
+		return fbo == null ? null : fbo.getColorBufferTexture();
 	}
 
 	/** For android, this will return whether the prepareAsync method of the android MediaPlayer is done with preparing.
@@ -349,7 +348,6 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 
 		if (fbo != null) fbo.dispose();
 		fbo = null;
-		frame = null;
 		if (renderer != null) {
 			renderer.dispose();
 			shader.dispose();
