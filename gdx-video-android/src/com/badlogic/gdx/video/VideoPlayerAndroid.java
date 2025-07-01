@@ -279,7 +279,8 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 		renderer.vertex(1, 1, 0);
 		renderer.end();
 		fbo.end();
-		if (frame == null) {
+
+		if (frame != fbo.getColorBufferTexture()) {
 			frame = fbo.getColorBufferTexture();
 			frame.setFilter(minFilter, magFilter);
 		}
