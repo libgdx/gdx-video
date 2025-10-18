@@ -1,0 +1,24 @@
+apply plugin: "java-library"
+
+java {
+    sourceCompatibility = "11"
+
+    withSourcesJar()
+    withJavadocJar()
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ["src/"]
+        }
+        resources {
+            srcDirs = ["res/"]
+        }
+    }
+}
+
+dependencies {
+    api project(":gdx-video-core")
+    api "com.github.xpenatan.gdx-teavm:backend-teavm:$gdxTeaVMVersion"
+}
