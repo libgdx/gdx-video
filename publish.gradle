@@ -5,6 +5,7 @@ configure([
         project(":gdx-video-desktop:gdx-video-lwjgl"),
         project(":gdx-video-desktop:gdx-video-lwjgl3"),
         project(":gdx-video-gwt"),
+        project(":gdx-video-teavm"),
         project(":gdx-video-robovm")
 ])
         {
@@ -18,7 +19,7 @@ configure([
                         publications {
                             mavenJava(MavenPublication) {
                                 artifactId = archivesBaseName ?: project.name
-                                
+
                                 //Most normal java projects
                                 if (components.findByName("java") != null)
                                     from components.java
