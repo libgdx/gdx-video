@@ -342,6 +342,9 @@ private:
     void resetPacketRange();
     /// Number of loop markers in the audio queue
     int pendingAudioLoopMarkers;
+    /// Number of loop boundaries represented by the marker currently being drained
+    int audioLoopPendingCount;
+    void trimStalledAudioPackets();
     /// If the audio is only longer than the video by encoder padding, it's cut after this many samples of each loop, at
     /// the end of the video. 0 if it isn't cut.
     int64_t audioCutSamples;
@@ -372,7 +375,7 @@ private:
     /// av_gettime_relative() when the audio took the last packet
     int64_t lastAudioPop;
     /// Starts counting the offset of the next audio loop
-    void enterNextAudioLoop();
+    void enterNextAudioLoop(int count);
     void resetLoopState();
     bool reopenAudioDecoder();
     /// Resets the audio decoder for the next loop, by reopening it only if necessary

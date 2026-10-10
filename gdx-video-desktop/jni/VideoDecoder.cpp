@@ -95,6 +95,7 @@ VideoDecoder::VideoDecoder() : decodeCondvar(decodeMutex) {
     audioCutSamples = 0;
     audioSampleRate = 0;
     pendingAudioLoopMarkers = 0;
+    audioLoopPendingCount = 1;
     resetLoopState();
 }
 
@@ -123,6 +124,7 @@ void VideoDecoder::resetLoopState() {
     audioSkipSamples = 0;
     audioLoop = 0;
     audioLoopDrained = false;
+    audioLoopPendingCount = 1;
     audioLoopSampleCarry = 0;
     lastAudioPop = av_gettime_relative();
     for(int i = 0; i < VIDEOPLAYER_LOOP_OFFSETS; i++) {
@@ -141,6 +143,7 @@ static bool isLoopMarker(AVPacket* packet) {
 AVPacket* VideoDecoder::newLoopMarker() {
     AVPacket* marker = av_packet_alloc();
     marker->stream_index = -1;
+    marker->duration = 1;
     return marker;
 }
 
@@ -476,7 +479,8 @@ int VideoDecoder::decodeAudio(void* decodingBuffer, int buf_samples) {
                     audioPackets.pop_back();
                     lastAudioPop = av_gettime_relative();
                     if(isLoopMarker(audioPacket)) {
-                        pendingAudioLoopMarkers--;
+                        audioLoopPendingCount = audioPacket->duration > 0 ? (int)audioPacket->duration : 1;
+                        pendingAudioLoopMarkers -= audioLoopPendingCount;
                     } else {
                         double end = getPacketTime(audioPacket, true);
                         // Only wake up the decoding thread once the queue got shorter or the file isn't read far enough
@@ -516,7 +520,8 @@ int VideoDecoder::decodeAudio(void* decodingBuffer, int buf_samples) {
                 if(audioLoopDrained) {
                     // The decoder has been drained and restarted already
                     audioLoopDrained = false;
-                    enterNextAudioLoop();
+                    enterNextAudioLoop(audioLoopPendingCount);
+                    audioLoopPendingCount = 1;
                     continue;
                 }
                 // Get the remaining audio of this loop out of the decoder first
@@ -530,7 +535,8 @@ int VideoDecoder::decodeAudio(void* decodingBuffer, int buf_samples) {
             audioLoopPending = false;
             if(!audioLoopDrained) {
                 // Otherwise that's done once the marker of the next loop arrives
-                enterNextAudioLoop();
+                enterNextAudioLoop(audioLoopPendingCount);
+                audioLoopPendingCount = 1;
             }
             if(!restartAudioDecoder()) {
                 endAudioOutput();
@@ -604,10 +610,15 @@ double VideoDecoder::getCurrentFrameTimestamp() {
     return rgbFrames[index]->pts * timeBase + frameLoops[index] * loopDuration + timestampOffset;
 }
 
-void VideoDecoder::enterNextAudioLoop() {
+void VideoDecoder::enterNextAudioLoop(int count) {
     // The silence played until here belongs to the loop that ended, so the next one starts at 0 again
-    int nextLoop = audioLoop + 1;
-    loopOffsetBase[nextLoop % VIDEOPLAYER_LOOP_OFFSETS] = timestampOffset;
+    int currentLoop = audioLoop;
+    int nextLoop = currentLoop + count;
+    // Any skipped loops had no audio consumed, so they all start with the same offset.
+    int firstLoop = FFMAX(currentLoop + 1, nextLoop - VIDEOPLAYER_LOOP_OFFSETS + 1);
+    for(int loop = firstLoop; loop <= nextLoop; loop++) {
+        loopOffsetBase[loop % VIDEOPLAYER_LOOP_OFFSETS] = timestampOffset;
+    }
     // Stored after the offset, so readers seeing the new loop see its offset as well
     audioLoop = nextLoop;
 }
@@ -637,7 +648,20 @@ double VideoDecoder::getLoopEnd(int loop) {
     double duration = loopDuration;
     // Once looped, the end of the file may already be the one of a later loop
     double end = duration > 0 ? loopStart + duration : fileEndTime.load();
-    return end + loop * duration + timestampOffset;
+    int currentAudioLoop = audioLoop;
+    double loopOffset = timestampOffset;
+    if(loop < currentAudioLoop) {
+        int loopDistance = currentAudioLoop - loop;
+        int endLoop = loop + 1;
+        if(loopDistance <= VIDEOPLAYER_LOOP_OFFSETS) {
+            loopOffset = loopOffsetBase[endLoop % VIDEOPLAYER_LOOP_OFFSETS];
+        } else {
+            loopOffset = loopOffsetBase[(currentAudioLoop - VIDEOPLAYER_LOOP_OFFSETS + 1) % VIDEOPLAYER_LOOP_OFFSETS];
+        }
+    } else if(loop > currentAudioLoop) {
+        loopOffset = loopOffsetBase[currentAudioLoop % VIDEOPLAYER_LOOP_OFFSETS];
+    }
+    return end + loop * duration + loopOffset;
 }
 
 bool VideoDecoder::readPacket(bool allowReopen) {
@@ -731,6 +755,7 @@ bool VideoDecoder::readPacket(bool allowReopen) {
     if(audioStreamIndex >= 0 && !audioOutputEnded) {
         audioPackets.push_front(newLoopMarker());
         pendingAudioLoopMarkers++;
+        trimStalledAudioPackets();
     }
     return true;
 }
@@ -742,18 +767,43 @@ void VideoDecoder::queueAudioPacket(AVPacket* packet) {
         return;
     }
     audioPackets.push_front(packet);
-    if(audioPackets.size() > VIDEOPLAYER_MAX_AUDIO_PACKETS &&
-       av_gettime_relative() - lastAudioPop > VIDEOPLAYER_AUDIO_STALL_TIME) {
-        // Nothing seems to play the audio (e.g. there is no audio device), so the oldest packet is dropped. Otherwise
-        // the queue would grow for as long as the video plays. Loop markers are kept, the loops are counted by them.
-        for(std::list<AVPacket*>::reverse_iterator it = audioPackets.rbegin(); it != audioPackets.rend(); ++it) {
-            if(!isLoopMarker(*it)) {
-                AVPacket* oldest = *it;
-                audioPackets.erase(std::next(it).base());
-                av_packet_free(&oldest);
-                break;
-            }
+    trimStalledAudioPackets();
+}
+
+void VideoDecoder::trimStalledAudioPackets() {
+    if(audioPackets.size() <= VIDEOPLAYER_MAX_AUDIO_PACKETS ||
+       av_gettime_relative() - lastAudioPop <= VIDEOPLAYER_AUDIO_STALL_TIME) {
+        return;
+    }
+    // Nothing seems to play the audio (e.g. there is no audio device), so obsolete audio is dropped. Keep only the
+    // newest loop marker and the packets after it; its duration accounts for all skipped loop boundaries.
+    std::list<AVPacket*>::iterator newestMarker = audioPackets.end();
+    for(std::list<AVPacket*>::iterator it = audioPackets.begin(); it != audioPackets.end(); ++it) {
+        if(isLoopMarker(*it)) {
+            newestMarker = it;
+            break;
         }
+    }
+    if(newestMarker != audioPackets.end() && pendingAudioLoopMarkers > 1) {
+        (*newestMarker)->duration = pendingAudioLoopMarkers;
+        std::list<AVPacket*>::iterator it = std::next(newestMarker);
+        while(it != audioPackets.end()) {
+            AVPacket* obsolete = *it;
+            it = audioPackets.erase(it);
+            av_packet_free(&obsolete);
+        }
+    }
+    while(audioPackets.size() > VIDEOPLAYER_MAX_AUDIO_PACKETS) {
+        std::list<AVPacket*>::reverse_iterator oldest = audioPackets.rbegin();
+        while(oldest != audioPackets.rend() && isLoopMarker(*oldest)) {
+            ++oldest;
+        }
+        if(oldest == audioPackets.rend()) {
+            break;
+        }
+        AVPacket* obsolete = *oldest;
+        audioPackets.erase(std::next(oldest).base());
+        av_packet_free(&obsolete);
     }
 }
 
