@@ -118,6 +118,7 @@ void VideoDecoder::resetLoopState() {
         frameLoops[i] = 0;
     }
     videoLoopPending = false;
+    videoLoopPendingCount = 1;
     audioLoopPending = false;
     audioLoopSamples = 0;
     audioSilenceSamples = 0;
@@ -682,7 +683,11 @@ bool VideoDecoder::readPacket(bool allowReopen) {
                 videoPacketsStart = FFMIN(videoPacketsStart, getPacketTime(packet, false));
                 videoPacketsEnd = FFMAX(videoPacketsEnd, lastPacketEnd);
             }
-            videoPackets.push_front(packet);
+            if(videoPackets.size() < VIDEOPLAYER_MAX_VIDEO_PACKETS) {
+                videoPackets.push_front(packet);
+            } else {
+                av_packet_free(&packet);
+            }
         } else if(packet->stream_index == audioStreamIndex) {
             if(hasTimestamp) {
                 audioPacketsStart = FFMIN(audioPacketsStart, getPacketTime(packet, false));
@@ -752,7 +757,16 @@ bool VideoDecoder::readPacket(bool allowReopen) {
     }
     logDebug("[VideoDecoder::readPacket] Reached the end, looping.\n");
     resetPacketRange();
-    videoPackets.push_front(newLoopMarker());
+    if(!videoPackets.empty() && isLoopMarker(videoPackets.front())) {
+        videoPackets.front()->duration++;
+    } else {
+        if(videoPackets.size() >= VIDEOPLAYER_MAX_VIDEO_PACKETS) {
+            AVPacket* packet = videoPackets.front();
+            videoPackets.pop_front();
+            av_packet_free(&packet);
+        }
+        videoPackets.push_front(newLoopMarker());
+    }
     if(audioStreamIndex >= 0 && !audioOutputEnded) {
         audioPackets.push_front(newLoopMarker());
         pendingAudioLoopMarkers++;
@@ -926,6 +940,7 @@ void VideoDecoder::decodeVideoFrame() {
             // Get the remaining frames of this loop out of the decoder first. If playback doesn't continue, the
             // video ends here.
             videoLoopPending = true;
+            videoLoopPendingCount = videoPacket->duration > 0 ? (int)videoPacket->duration : 1;
             av_packet_free(&videoPacket);
         }
         avcodec_send_packet(videoCodecContext, videoPacket);
@@ -935,7 +950,8 @@ void VideoDecoder::decodeVideoFrame() {
     if(ret == AVERROR_EOF && videoLoopPending) {
         videoLoopPending = false;
         avcodec_flush_buffers(videoCodecContext);
-        videoLoop++;
+        videoLoop += videoLoopPendingCount;
+        videoLoopPendingCount = 1;
         return;
     }
     if(ret != 0) {

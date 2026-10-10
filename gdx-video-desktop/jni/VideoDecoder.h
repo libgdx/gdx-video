@@ -356,6 +356,7 @@ private:
     int frameLoops[VIDEOPLAYER_VIDEO_NUM_BUFFERED_FRAMES];
     /// Set while a decoder is drained at the end of a loop
     bool videoLoopPending;
+    int videoLoopPendingCount;
     bool audioLoopPending;
     int audioSampleRate;
     /// Number of audio samples output in the current loop
