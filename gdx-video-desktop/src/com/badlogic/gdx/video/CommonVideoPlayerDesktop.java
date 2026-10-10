@@ -57,9 +57,9 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 	int loop = 0;
 	/** Position of the displayed frame within the video, in milliseconds */
 	int shownTimestamp = 0;
-	/** First frame of the next loop, if playback completed right before it because looping got disabled. It's shown if playback
-	 * continues with looping enabled again. */
-	ByteBuffer pendingLoopFrame;
+	/** Frame taken from the decoder, but not shown yet, as it isn't due yet. If playback completed because looping got disabled,
+	 * it's the first frame of the next loop, which is shown if playback continues with looping enabled again. */
+	ByteBuffer pendingFrame;
 	/** How many frames the decoder had moved on when the last one was taken, to tell repeated frames apart */
 	int framesDisplayed = 0;
 
@@ -174,7 +174,7 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 		}
 		if (completed) {
 			completed = false;
-			if (pendingLoopFrame != null && looping) {
+			if (pendingFrame != null && looping) {
 				// The decoder is already in the next loop, so continue there instead of starting over
 				if (audio != null) {
 					audio.play();
@@ -312,19 +312,25 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 				}
 			}
 
-			double currentPosition = isFirstFrame ? -1 : decoder.getCurrentFrameTimestamp();
-
-			if (pendingLoopFrame != null) {
-				// Taken from the decoder before playback completed, but not shown. It's still the decoder's current frame, so
-				// currentPosition is its timestamp already.
-				showFrame(pendingLoopFrame, decoder.getCurrentFrameLoop());
-				pendingLoopFrame = null;
-				newFrame = true;
-			}
-
-			while (currentPosition <= targetPosition) {
-				ByteBuffer videoData = decoder.nextVideoFrame();
-				if (videoData != null) {
+			while (true) {
+				if (pendingFrame == null) {
+					ByteBuffer videoData = decoder.nextVideoFrame();
+					if (videoData == null) {
+						if (isFirstFrame) {
+							return false;
+						}
+						// The video ended. The audio may be longer, so playback ends with it, while the last frame is still shown.
+						if (!isShownLoopPlayed()) {
+							break;
+						}
+						if (looping) {
+							// The decoder couldn't loop by itself
+							rewind();
+						} else {
+							complete();
+						}
+						return newFrame;
+					}
 					int newFramesDisplayed = decoder.getFramesDisplayed();
 					if (newFramesDisplayed == framesDisplayed) {
 						// A frame was repeated (not loaded fast enough). Not told by the timestamp, which may not change
@@ -332,33 +338,31 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 						break;
 					}
 					framesDisplayed = newFramesDisplayed;
-					double newPosition = decoder.getCurrentFrameTimestamp();
-					int newLoop = decoder.getCurrentFrameLoop();
-					if (newLoop != loop) {
-						if (!looping) {
-							// The decoder already continued with the next loop before looping got disabled. The frame is
-							// kept, in case playback continues with looping enabled again.
-							pendingLoopFrame = videoData;
-							complete();
-							return newFrame;
-						}
-					}
-					currentPosition = newPosition;
-					showFrame(videoData, newLoop);
-					newFrame = true;
-				} else if (isFirstFrame) {
-					return false;
-				} else if (looping) {
-					// The decoder couldn't loop by itself
-					rewind();
-					return newFrame;
-				} else {
-					complete();
-					return newFrame;
+					// It stays the decoder's current frame until the next one is taken, so it can be shown later
+					pendingFrame = videoData;
 				}
-			}
 
-			isFirstFrame = false;
+				int frameLoop = decoder.getCurrentFrameLoop();
+				if (frameLoop != loop && !looping) {
+					// The decoder already continued with the next loop before looping got disabled. Playback ends with the
+					// audio of the shown loop, which may be longer than its video. The frame is kept, in case playback
+					// continues with looping enabled again.
+					if (isShownLoopPlayed()) {
+						complete();
+						return newFrame;
+					}
+					break;
+				}
+				// The first frame is shown right away, the others once they are due. Otherwise e.g. the first frame of the
+				// next loop would be shown while the audio of the previous one is still playing.
+				if (!isFirstFrame && decoder.getCurrentFrameTimestamp() > targetPosition) {
+					break;
+				}
+				showFrame(pendingFrame, frameLoop);
+				pendingFrame = null;
+				newFrame = true;
+				isFirstFrame = false;
+			}
 			return newFrame;
 		}
 		return false;
@@ -379,11 +383,17 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 			GL20.GL_UNSIGNED_BYTE, videoData);
 	}
 
+	/** @return Whether playback reached the end of the shown frame's loop, which is the end of the audio if it's longer than the
+	 *         video */
+	private boolean isShownLoopPlayed () {
+		return targetPosition >= decoder.getLoopEnd(loop);
+	}
+
 	private void resetShownFrame () {
 		framesDisplayed = 0;
 		loop = 0;
 		shownTimestamp = 0;
-		pendingLoopFrame = null;
+		pendingFrame = null;
 	}
 
 	private void complete () {

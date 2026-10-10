@@ -1,12 +1,12 @@
 /*******************************************************************************
  * Copyright 2014 See AUTHORS file.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -34,6 +34,7 @@ extern "C"
 #include "Mutex.hpp"
 #include "CondVar.hpp"
 
+#include <atomic>
 #include <list>
 
 //Should always be bigger then 1! If not, the buffer will never be filled, because the buffer will never be completely full.
@@ -85,7 +86,7 @@ typedef void (*CleanupFunc)(void*);
 
 /**
  * @brief The VideoPlayer class is the base class which will handle everything needed to play a videofile.
- * 
+ *
  * @author Rob Bogie <rob.bogie@codepoke.net>
  */
 class VideoDecoder : private Thread{
@@ -166,6 +167,12 @@ public:
      * @return The loop index of the current frame
      */
     int getCurrentFrameLoop();
+    /**
+     * @brief getLoopEnd Returns when the given loop ends, i.e. the timestamp at which the longer one of the video and the
+     *                   audio ends. Only known once the end of the file has been reached.
+     * @return The timestamp in seconds
+     */
+    double getLoopEnd(int loop);
     /**
      * @brief getVideoFrameSize This method returns the size in bytes of each aquired videoFrame.
      * @return The size in bytes of a single video frame
@@ -276,9 +283,9 @@ private:
     Mutex decodeMutex;
     CondVar decodeCondvar;
     // set to stop the decoding thread
-    volatile bool stopRequested;
+    std::atomic<bool> stopRequested;
     // set while rewind() waits for the decoding thread
-    volatile bool rewindRequested;
+    std::atomic<bool> rewindRequested;
     // set to make the decoding thread read packets ahead for the audio
     bool prefetchRequested;
     // held while the video / audio decoders are being used
@@ -302,19 +309,25 @@ private:
     AVRational videoFrameRate;
     /// Index of the audio stream when loading, which unlike audioStreamIndex doesn't change
     int loadedAudioStreamIndex;
-    double timestampOffset;
+    /// Read by the thread showing the frames, while the audio changes it
+    std::atomic<double> timestampOffset;
 
     // Looping
-    volatile bool looping;
+    std::atomic<bool> looping;
     /// Duration of one loop in seconds, from the start of the earliest to the end of the longest stream. Known once the
-    /// end of the file has been reached.
-    double loopDuration;
+    /// end of the file has been reached. Fixed from then on, set after loopStart.
+    std::atomic<double> loopDuration;
+    /// Start of a loop in seconds, from the start of the earliest stream. Known together with loopDuration.
+    double loopStart;
     /// End time of the latest video / audio packet read, in seconds
     double videoPacketsEnd;
     double audioPacketsEnd;
     /// Start time of the earliest video / audio packet read in this loop, in seconds
     double videoPacketsStart;
     double audioPacketsStart;
+    /// End of the longer stream once the end of the file has been reached, in seconds. Unlike the packet range, it can
+    /// be read without holding packetMutex.
+    std::atomic<double> fileEndTime;
     /// End time of the packet read last, in seconds
     double lastPacketEnd;
     /// Whether the end of the file has been reached, and the next read starts the next loop
@@ -349,7 +362,7 @@ private:
     /// Samples to drop, because the audio of the previous loop was longer than the loop
     int64_t audioSkipSamples;
     /// Loop the audio output is in
-    volatile int audioLoop;
+    std::atomic<int> audioLoop;
     /// timestampOffset when the audio started each loop, indexed by loop % VIDEOPLAYER_LOOP_OFFSETS
     double loopOffsetBase[VIDEOPLAYER_LOOP_OFFSETS];
     /// Set when the audio decoder has been drained at the end of the file, before the marker of the next loop arrived

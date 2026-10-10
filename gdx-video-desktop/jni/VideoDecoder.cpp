@@ -91,6 +91,7 @@ VideoDecoder::VideoDecoder() : decodeCondvar(decodeMutex) {
 
     looping = false;
     loopDuration = 0;
+    loopStart = 0;
     audioCutSamples = 0;
     audioSampleRate = 0;
     pendingAudioLoopMarkers = 0;
@@ -103,6 +104,7 @@ void VideoDecoder::resetPacketRange() {
     videoPacketsStart = HUGE_VAL;
     audioPacketsStart = HUGE_VAL;
     lastPacketEnd = 0;
+    fileEndTime = 0;
     endOfFile = false;
     fileEnded = false;
 }
@@ -422,7 +424,8 @@ void VideoDecoder::updateAudioBuffer() {
 
                 //Set an offset for the video, so that audio won't be behind
                 if(!audioOutputEnded) {
-                    timestampOffset += secPerKbBlock;
+                    // Only changed by this thread (or while it's locked out), so no atomic add is needed
+                    timestampOffset = timestampOffset + secPerKbBlock;
                 }
             } else {
                 audioDecodedSize = size;
@@ -605,7 +608,7 @@ void VideoDecoder::enterNextAudioLoop() {
     // The silence played until here belongs to the loop that ended, so the next one starts at 0 again
     int nextLoop = audioLoop + 1;
     loopOffsetBase[nextLoop % VIDEOPLAYER_LOOP_OFFSETS] = timestampOffset;
-    __sync_synchronize();
+    // Stored after the offset, so readers seeing the new loop see its offset as well
     audioLoop = nextLoop;
 }
 
@@ -613,7 +616,6 @@ double VideoDecoder::getCurrentFramePosition() {
     int index = getReadIndex();
     int loop = frameLoops[index];
     int currentAudioLoop = audioLoop;
-    __sync_synchronize();
     // Only the offset added during the frame's loop counts. If the audio isn't in that loop yet (or there is no audio),
     // nothing has been added during it.
     double loopOffset = 0;
@@ -628,6 +630,14 @@ double VideoDecoder::getCurrentFramePosition() {
 
 int VideoDecoder::getCurrentFrameLoop() {
     return frameLoops[getReadIndex()];
+}
+
+double VideoDecoder::getLoopEnd(int loop) {
+    // Doesn't lock the packets, as they are held while reading from the file, and this is called while rendering
+    double duration = loopDuration;
+    // Once looped, the end of the file may already be the one of a later loop
+    double end = duration > 0 ? loopStart + duration : fileEndTime.load();
+    return end + loop * duration + timestampOffset;
 }
 
 bool VideoDecoder::readPacket(bool allowReopen) {
@@ -661,6 +671,7 @@ bool VideoDecoder::readPacket(bool allowReopen) {
     }
     av_packet_free(&packet);
     endOfFile = true;
+    fileEndTime = FFMAX(videoPacketsEnd, audioPacketsEnd);
 
     AVIOContext* pb = formatContext->pb;
     if(ret != AVERROR_EOF && !(pb != NULL && avio_feof(pb) && pb->error == 0)) {
@@ -678,7 +689,7 @@ bool VideoDecoder::readPacket(bool allowReopen) {
         // The whole file has been read, so the duration of a loop is known now. It's fixed from here on, so the
         // timestamps of the frames don't change. The first frame of the next loop follows right after the end of
         // the longer stream.
-        double loopStart = FFMAX(0, FFMIN(videoPacketsStart, audioPacketsStart));
+        loopStart = FFMAX(0, FFMIN(videoPacketsStart, audioPacketsStart));
         double loopEnd = videoPacketsEnd;
         if(audioSampleRate > 0 && audioPacketsEnd > 0) {
             if(audioPacketsEnd < videoPacketsEnd + VIDEOPLAYER_MAX_AUDIO_PADDING) {

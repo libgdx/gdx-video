@@ -320,6 +320,14 @@ public class VideoDecoder implements Disposable {
 		return pointer->getCurrentFrameLoop();
 														 */
 
+	/** @param loop The loop, see {@link #getCurrentFrameLoop()}
+	 * @return The timestamp in seconds at which the loop ends, i.e. the end of the longer one of the video and the audio. Only
+	 *         known once the end of the file has been reached. */
+	public native double getLoopEnd (int loop);/*
+		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
+		return pointer->getLoopEnd(loop);
+														 */
+
 	/** @return The position of the current frame within the current loop in seconds, i.e. the timestamp without the offset
 	 *         added by looping. */
 	public native double getCurrentFramePosition ();/*
