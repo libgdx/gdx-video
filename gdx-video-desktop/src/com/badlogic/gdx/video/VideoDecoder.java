@@ -31,7 +31,20 @@ public class VideoDecoder implements Disposable {
 	interface VideoFileReader {
 		@SuppressWarnings("unused")
 		int fillBuffer (ByteBuffer buffer);
+
+		/** Seeks within the file.
+		 *
+		 * @param offset The offset to seek to
+		 * @param whence {@link #SEEK_SET}, {@link #SEEK_SIZE}, or {@link #SEEK_END} if {@link #SEEK_SIZE} failed
+		 * @return The new position, the file size for {@link #SEEK_SIZE}, or a negative value on failure */
+		@SuppressWarnings("unused")
+		long seek (long offset, int whence);
 	}
+
+	static final int SEEK_SET = 0;
+	static final int SEEK_END = 2;
+	/** Not an actual seek, only requests the size of the file. */
+	static final int SEEK_SIZE = 0x10000;
 
 	public static class VideoDecoderBuffers {
 		private final ByteBuffer videoBuffer;
@@ -122,20 +135,25 @@ public class VideoDecoder implements Disposable {
 
 	 	JavaVM* jvm = NULL;
 	 	JavaVMAttachArgs attachArgs;
+	 	// Whether this thread was attached by attachThread, so only those get detached again
+	 	static thread_local bool attachedThread = false;
 
 	 	struct FFmpegFillBufferData {
             jobject objectToCall;
             jmethodID methodToCall;
+            jmethodID seekMethodToCall;
         };
 
         static JNIEnv * attachThread() {
         	JNIEnv * env;
 			int getEnvStat = jvm->GetEnv((void **)&env, JNI_VERSION_1_6);
 			if (getEnvStat == JNI_EDETACHED) {
-				if (jvm->AttachCurrentThread((void **)&env, (void *)&attachArgs) != 0) {
+				// As a daemon, so the decoding thread never keeps the JVM from exiting, e.g. if the player isn't disposed
+				if (jvm->AttachCurrentThreadAsDaemon((void **)&env, (void *)&attachArgs) != 0) {
 					logError("Failed to attach\n");
 					return NULL;
 				}
+				attachedThread = true;
 			} else if (getEnvStat == JNI_EVERSION) {
 				logError("Unsupported version\n");
 				return NULL;
@@ -146,14 +164,30 @@ public class VideoDecoder implements Disposable {
 		static int ffmpegFillBuffer(void* data, u_int8_t* buffer, int bufferSize) {
 			FFmpegFillBufferData* customData = (FFmpegFillBufferData*)data;
 			JNIEnv * env = attachThread();
-			if(env == NULL) return 0;
-			jint bytes = env->CallIntMethod(customData->objectToCall, customData->methodToCall, env->NewDirectByteBuffer(buffer, bufferSize));
+			if(env == NULL) return AVERROR(EIO);
+			jobject byteBuffer = env->NewDirectByteBuffer(buffer, bufferSize);
+			jint bytes = env->CallIntMethod(customData->objectToCall, customData->methodToCall, byteBuffer);
+			// The decoding thread stays attached, so local references would never be freed otherwise
+			env->DeleteLocalRef(byteBuffer);
 			if (env->ExceptionCheck()) {
 				env->ExceptionDescribe();
+				return AVERROR(EIO);
 			}
 			if(bytes != bufferSize)
 				logDebug("[VideoPlayer::fillBuffer] AVIO buffer not filled (%d/%d bytes).\n", bytes, bufferSize);
-			return bytes;
+			return bytes > 0 ? bytes : AVERROR_EOF;
+		}
+
+		static int64_t ffmpegSeekBuffer(void* data, int64_t offset, int whence) {
+			FFmpegFillBufferData* customData = (FFmpegFillBufferData*)data;
+			JNIEnv * env = attachThread();
+			if(env == NULL) return -1;
+			jlong position = env->CallLongMethod(customData->objectToCall, customData->seekMethodToCall, (jlong)offset, (jint)whence);
+			if (env->ExceptionCheck()) {
+				env->ExceptionDescribe();
+				return -1;
+			}
+			return position;
 		}
 
 		static void ffmpegDataCleanup(void* data) {
@@ -161,8 +195,12 @@ public class VideoDecoder implements Disposable {
 			JNIEnv * env = attachThread();
 			if(env == NULL) return;
 			env->DeleteGlobalRef(customData->objectToCall);
-			jvm->DetachCurrentThread();
-            memset(customData, 0, sizeof(FFmpegFillBufferData));
+			delete customData;
+			// Called on the Java thread if loading failed, which must stay attached
+			if(attachedThread) {
+				attachedThread = false;
+				jvm->DetachCurrentThread();
+			}
 		}
 	 */
 
@@ -186,11 +224,13 @@ public class VideoDecoder implements Disposable {
 	/** This will load a video for playback from an I/O Stream
 	 *
 	 * @param reader A VideoFileReader that is used to fill the FFmpeg IO buffers.
+	 * @param seekable Whether the reader can seek cheaply. If not, it is only asked to seek when necessary (e.g. on
+	 *           {@link #rewind()}).
 	 * @return A VideoDecoderBuffers object which contains all the information that may be needed about the video.
 	 * @throws IllegalArgumentException When the filename is invalid.
 	 * @throws Exception                Runtime exceptions in c++, which can have different causes.
 	 */
-	public native VideoDecoderBuffers loadStream (VideoFileReader reader)
+	public native VideoDecoderBuffers loadStream (VideoFileReader reader, boolean seekable)
 			throws IllegalArgumentException, Exception;/*
 		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
 		try {
@@ -201,11 +241,13 @@ public class VideoDecoder implements Disposable {
             data->objectToCall = env->NewGlobalRef(reader);
             jclass clazz = env->GetObjectClass(data->objectToCall);
             data->methodToCall = env->GetMethodID(clazz, "fillBuffer", "(Ljava/nio/ByteBuffer;)I");
-            if(data->methodToCall == NULL) {
+            data->seekMethodToCall = env->GetMethodID(clazz, "seek", "(JI)J");
+            if(data->methodToCall == NULL || data->seekMethodToCall == NULL) {
+                env->DeleteGlobalRef(data->objectToCall);
                 delete data;
                 throw std::invalid_argument("Supplied method name invalid! Is it having the correct signature?");
             }
-            pointer->loadStream(ffmpegFillBuffer, data, ffmpegDataCleanup, &bufferInfo);
+            pointer->loadStream(ffmpegFillBuffer, ffmpegSeekBuffer, seekable, data, ffmpegDataCleanup, &bufferInfo);
             jobject videoBuffer = NULL;
             jobject audioBuffer = NULL;
             if(bufferInfo.videoBuffer != NULL && bufferInfo.videoBufferSize > 0) {
@@ -256,6 +298,42 @@ public class VideoDecoder implements Disposable {
 		pointer->updateAudioBuffer();
 															 */
 
+	/** Seeks back to the start of the video, so it can be played again without reloading it. Afterwards
+	 * {@link #nextVideoFrame()} returns null until the first frame has been decoded again.
+	 *
+	 * @return Whether rewinding succeeded. If not, the video needs to be reloaded. */
+	public native boolean rewind ();/*
+		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
+		return pointer->rewind();
+														 */
+
+	/** Sets whether the video starts over seamlessly when reaching the end. The timestamps then keep increasing by the
+	 * duration of the video with each loop, see {@link #getCurrentFrameLoop()}. */
+	public native void setLooping (boolean looping);/*
+		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
+		pointer->setLooping(looping);
+														 */
+
+	/** @return How often the video has looped before the current frame. */
+	public native int getCurrentFrameLoop ();/*
+		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
+		return pointer->getCurrentFrameLoop();
+														 */
+
+	/** @return The position of the current frame within the current loop in seconds, i.e. the timestamp without the offset
+	 *         added by looping. */
+	public native double getCurrentFramePosition ();/*
+		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
+		return pointer->getCurrentFramePosition();
+														 */
+
+	/** Stops queueing audio, when nothing is going to play it (e.g. without an audio device). Then {@link #updateAudioBuffer()}
+	 * must not be called anymore. */
+	public native void disableAudio ();/*
+		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
+		pointer->disableAudio();
+														 */
+
 	/** This gets the timestamp of the current displaying frame (The one that you got last by calling nextVideoFrame). The
 	 * timestamp is in seconds, and can be total nonsense if you never called nextVideoFrame. It is being corrected when the audio
 	 * couldn't keep up.
@@ -276,6 +354,12 @@ public class VideoDecoder implements Disposable {
 	public native boolean isBuffered ();/*
 		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
 		return pointer->isBuffered();
+													 */
+
+	/** @return How many frames {@link #nextVideoFrame()} has moved on, which doesn't change when it repeats a frame. */
+	public native int getFramesDisplayed ();/*
+		VideoDecoder* pointer = getClassPointer<VideoDecoder>(env, object);
+		return pointer->getFramesDisplayed();
 													 */
 
 	public static native void setDebug(boolean enableDebug);/*
