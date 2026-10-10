@@ -420,6 +420,8 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 				// Drops the queued audio, and the audio read from the decoder before rewinding (by resetting it). Not
 				// refilled here, as the decoding thread hasn't read anything yet. update() plays it again.
 				audio.stop();
+				// stop() doesn't reset it if there is no audio device or source
+				audio.reset();
 			}
 		} else {
 			resetVideo();

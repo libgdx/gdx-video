@@ -484,10 +484,11 @@ int VideoDecoder::decodeAudio(void* decodingBuffer, int buf_samples) {
                     } else {
                         double end = getPacketTime(audioPacket, true);
                         // Only wake up the decoding thread once the queue got shorter or the file isn't read far enough
-                        // ahead anymore, it then reads a batch
+                        // ahead anymore, it then reads a batch. Once the next loop is queued, the file has been read
+                        // beyond this loop, and its times can't be compared with this packet's.
                         if(needsPrefetch() &&
                            (endOfFile || audioPackets.size() < VIDEOPLAYER_AUDIO_PREFETCH_PACKETS / 2 ||
-                            lastPacketEnd < end + VIDEOPLAYER_AUDIO_PREFETCH_TIME)) {
+                            (pendingAudioLoopMarkers == 0 && lastPacketEnd < end + VIDEOPLAYER_AUDIO_PREFETCH_TIME))) {
                             requestPrefetch();
                         }
                         // Whether this is the end of the loop has to be known before audio beyond the end of the video
@@ -649,6 +650,8 @@ double VideoDecoder::getLoopEnd(int loop) {
     // Once looped, the end of the file may already be the one of a later loop
     double end = duration > 0 ? loopStart + duration : fileEndTime.load();
     int currentAudioLoop = audioLoop;
+    // If the audio is in that loop or an earlier one, the offset can still grow until the loop ends, so the current one
+    // is the earliest it can end with
     double loopOffset = timestampOffset;
     if(loop < currentAudioLoop) {
         int loopDistance = currentAudioLoop - loop;
@@ -658,8 +661,6 @@ double VideoDecoder::getLoopEnd(int loop) {
         } else {
             loopOffset = loopOffsetBase[(currentAudioLoop - VIDEOPLAYER_LOOP_OFFSETS + 1) % VIDEOPLAYER_LOOP_OFFSETS];
         }
-    } else if(loop > currentAudioLoop) {
-        loopOffset = loopOffsetBase[currentAudioLoop % VIDEOPLAYER_LOOP_OFFSETS];
     }
     return end + loop * duration + loopOffset;
 }
