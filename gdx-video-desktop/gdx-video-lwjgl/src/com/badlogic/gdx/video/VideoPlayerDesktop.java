@@ -22,7 +22,7 @@ import java.nio.ByteBuffer;
 
 public class VideoPlayerDesktop extends CommonVideoPlayerDesktop {
 	@Override
-	Music createMusic (VideoDecoder decoder, ByteBuffer audioBuffer, int audioChannels, int sampleRate) {
+	public Music createMusic (VideoDecoder decoder, ByteBuffer audioBuffer, int audioChannels, int sampleRate) {
 		return new RawMusic(decoder, audioBuffer, audioChannels, sampleRate);
 	}
 }

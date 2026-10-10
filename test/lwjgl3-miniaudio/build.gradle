@@ -1,0 +1,27 @@
+apply plugin: 'application'
+
+sourceSets.main.resources.srcDirs += [ project(':test').file('assets').path ]
+mainClassName = 'com.badlogic.gdx.video.test.miniaudio.MiniAudioLauncher'
+eclipse.project.name = appName + '-lwjgl3-miniaudio'
+sourceCompatibility = 8.0
+
+dependencies {
+	implementation project(':gdx-video-desktop:gdx-video-lwjgl3')
+	implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+	implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+	implementation "games.rednblack.miniaudio:miniaudio:$miniaudioVersion"
+	implementation "games.rednblack.miniaudio:gdx-miniaudio-platform:$miniaudioVersion:natives-desktop"
+	implementation fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+import org.gradle.internal.os.OperatingSystem
+
+run {
+	workingDir = project(':test').file('assets').path
+	setIgnoreExitValue(true)
+
+	if (OperatingSystem.current() == OperatingSystem.MAC_OS) {
+		// Required to run LWJGL3 Java apps on MacOS
+		jvmArgs += "-XstartOnFirstThread"
+	}
+}

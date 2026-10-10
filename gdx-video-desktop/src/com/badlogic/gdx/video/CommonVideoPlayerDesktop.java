@@ -63,7 +63,7 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 	public CommonVideoPlayerDesktop () {
 	}
 
-	abstract Music createMusic (VideoDecoder decoder, ByteBuffer audioBuffer, int audioChannels, int sampleRate);
+	public abstract Music createMusic (VideoDecoder decoder, ByteBuffer audioBuffer, int audioChannels, int sampleRate);
 
 	private int getTextureWidth () {
 		return videoBufferWidth;
