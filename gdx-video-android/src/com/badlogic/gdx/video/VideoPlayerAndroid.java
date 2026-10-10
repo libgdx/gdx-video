@@ -40,10 +40,12 @@ import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.badlogic.gdx.graphics.glutils.ImmediateModeRenderer20;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.math.Matrix4;
+import com.badlogic.gdx.utils.BufferUtils;
 import com.badlogic.gdx.utils.Null;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.IntBuffer;
 
 /** Android implementation of the VideoPlayer class.
  *
@@ -104,7 +106,7 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 
 	private ShaderProgram shader;
 	private Matrix4 transform;
-	private final int[] textures = new int[1];
+	private IntBuffer textureBuffer;
 	private SurfaceTexture videoTexture;
 	private Surface surface;
 	private FrameBuffer fbo;
@@ -137,12 +139,23 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 	private void initializeMediaPlayer () {
 		if (handler == null) handler = new Handler(Looper.getMainLooper());
 
-		handler.post(new Runnable() {
+		Gdx.app.postRunnable(new Runnable() {
 			@Override
 			public void run () {
-				player = new MediaPlayer();
-				videoTexture = new SurfaceTexture(textures[0]);
-				initialized = true;
+				textureBuffer = BufferUtils.newIntBuffer(1);
+				Gdx.gl.glGenTextures(1, textureBuffer);
+				final int textureID = textureBuffer.get(0);
+
+				Gdx.gl.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textureID);
+
+				handler.post(new Runnable() {
+					@Override
+					public void run () {
+						player = new MediaPlayer();
+						videoTexture = new SurfaceTexture(textureID);
+						initialized = true;
+					}
+				});
 			}
 		});
 	}
@@ -248,7 +261,7 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 	 * @return texture handle to be used with external OES target, -1 if texture is not available */
 	public int getTextureExternal () {
 		if (prepared) {
-			return textures[0];
+			return textureBuffer.get(0);
 		}
 		return -1;
 	}
@@ -346,7 +359,7 @@ public class VideoPlayerAndroid extends AbstractVideoPlayer implements VideoPlay
 
 		if (videoTexture != null) {
 			videoTexture.detachFromGLContext();
-			GLES20.glDeleteTextures(1, textures, 0);
+			GLES20.glDeleteTextures(1, textureBuffer);
 		}
 
 		if (fbo != null) fbo.dispose();
