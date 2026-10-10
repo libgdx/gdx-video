@@ -17,14 +17,13 @@
 package com.badlogic.gdx.video;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.backends.lwjgl3.audio.mock.MockAudio;
 
 import java.nio.ByteBuffer;
 
 public class VideoPlayerDesktop extends CommonVideoPlayerDesktop {
 	@Override
-	Music createMusic (VideoDecoder decoder, ByteBuffer audioBuffer, int audioChannels, int sampleRate) {
+	DecoderMusic createMusic (VideoDecoder decoder, ByteBuffer audioBuffer, int audioChannels, int sampleRate) {
 		if (Gdx.audio.getClass() == MockAudio.class) return null;
 		return new RawMusic(decoder, audioBuffer, audioChannels, sampleRate);
 	}

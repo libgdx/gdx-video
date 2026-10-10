@@ -19,14 +19,16 @@ package com.badlogic.gdx.video;
 import static com.badlogic.gdx.Application.LOG_DEBUG;
 
 import java.io.BufferedInputStream;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Pixmap.Format;
@@ -40,14 +42,26 @@ import com.badlogic.gdx.video.VideoDecoder.VideoDecoderBuffers;
 abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 	VideoDecoder decoder;
 	Texture texture;
-	Music audio;
+	DecoderMusic audio;
 	long startTime = 0;
 	long lastFrameID = 0;
-	float targetPosition = 0;
+	/** Doubles, as the timestamps keep increasing while looping */
+	double targetPosition = 0;
 
 	boolean paused = false;
 	boolean looping = false;
 	boolean isFirstFrame = true;
+	/** Set when the end was reached without looping */
+	boolean completed = false;
+	/** How often the video has looped before the displayed frame */
+	int loop = 0;
+	/** Position of the displayed frame within the video, in milliseconds */
+	int shownTimestamp = 0;
+	/** Frame taken from the decoder, but not shown yet, as it isn't due yet. If playback completed because looping got disabled,
+	 * it's the first frame of the next loop, which is shown if playback continues with looping enabled again. */
+	ByteBuffer pendingFrame;
+	/** How many frames the decoder had moved on when the last one was taken, to tell repeated frames apart */
+	int framesDisplayed = 0;
 
 	int currentVideoWidth, currentVideoHeight;
 	int videoBufferWidth;
@@ -55,15 +69,18 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 	CompletionListener completionListener;
 	FileHandle currentFile;
 
-	BufferedInputStream inputStream;
+	/** Only set if the file can't be accessed directly, e.g. when it is inside a jar */
+	InputStream inputStream;
 	ReadableByteChannel fileChannel;
+	long filePosition;
 
 	boolean playing = false;
 
 	public CommonVideoPlayerDesktop () {
 	}
 
-	abstract Music createMusic (VideoDecoder decoder, ByteBuffer audioBuffer, int audioChannels, int sampleRate);
+	/** @return The music playing the decoder's audio, or null if audio isn't available */
+	abstract DecoderMusic createMusic (VideoDecoder decoder, ByteBuffer audioBuffer, int audioChannels, int sampleRate);
 
 	private int getTextureWidth () {
 		return videoBufferWidth;
@@ -94,11 +111,14 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 		VideoDecoder.setDebug(Gdx.app.getLogLevel() >= LOG_DEBUG);
 
 		currentFile = file;
-		inputStream = file.read(256 * 1024);
-		fileChannel = Channels.newChannel(inputStream);
+		openFile(true);
 
 		isFirstFrame = true;
+		completed = false;
+		resetShownFrame();
 		decoder = new VideoDecoder();
+		// Set before the decoding thread starts, short videos may reach their end right away
+		decoder.setLooping(looping);
 		VideoDecoderBuffers buffers;
 		try {
 			buffers = decoder.loadStream(new VideoDecoder.VideoFileReader() {
@@ -106,13 +126,21 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 				public int fillBuffer (ByteBuffer buffer) {
 					return readFileContents(buffer);
 				}
-			});
+
+				@Override
+				public long seek (long offset, int whence) {
+					return seekFileContents(offset, whence);
+				}
+			}, fileChannel instanceof FileChannel);
 
 			if (buffers != null) {
 				ByteBuffer audioBuffer = buffers.getAudioBuffer();
 				if (audioBuffer != null) {
-					if (audio != null) audio.dispose();
 					audio = createMusic(decoder, audioBuffer, buffers.getAudioChannels(), buffers.getAudioSampleRate());
+					if (audio == null) {
+						// Otherwise the decoder would keep the audio it reads ahead, as nothing reads it
+						decoder.disableAudio();
+					}
 				}
 				currentVideoWidth = buffers.getVideoWidth();
 				currentVideoHeight = buffers.getVideoHeight();
@@ -144,9 +172,43 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 				audio.play();
 			}
 		}
-		if (decoder.nextVideoFrame() == null && !isFirstFrame) {
-			resetVideo();
+		if (completed) {
+			completed = false;
+			if (pendingFrame != null && looping) {
+				// The decoder is already in the next loop, so continue there instead of starting over
+				if (audio != null) {
+					audio.play();
+				}
+			} else {
+				// update() starts the audio again
+				rewind();
+			}
 		}
+	}
+
+	/** @param direct Whether the file may be read directly. Otherwise it's read as a stream. */
+	private void openFile (boolean direct) {
+		closeFile();
+		InputStream stream = currentFile.read();
+		if (direct && stream.getClass() == FileInputStream.class) {
+			fileChannel = ((FileInputStream)stream).getChannel();
+		} else {
+			inputStream = new BufferedInputStream(stream, 256 * 1024);
+			fileChannel = Channels.newChannel(inputStream);
+		}
+		filePosition = 0;
+	}
+
+	private void closeFile () {
+		try {
+			if (fileChannel != null) {
+				fileChannel.close();
+			}
+		} catch (IOException e) {
+			Gdx.app.error("gdx-video", "Error closing file", e);
+		}
+		fileChannel = null;
+		inputStream = null;
 	}
 
 	/** Called by jni to fill in the file buffer.
@@ -155,10 +217,69 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 	 * @return The amount that has been filled into the buffer. */
 	private int readFileContents (ByteBuffer buffer) {
 		try {
+			if (fileChannel == null) {
+				// Reopening the file failed
+				return -1;
+			}
 			buffer.rewind();
-			return fileChannel.read(buffer);
+			int read = fileChannel.read(buffer);
+			if (read > 0) {
+				filePosition += read;
+			}
+			return read;
 		} catch (IOException e) {
 			throw new RuntimeException(e);
+		}
+	}
+
+	/** Called by jni to seek within the file. Seeking backwards in a stream reopens it.
+	 *
+	 * @return The new position, the file size or a negative value on failure. */
+	private long seekFileContents (long offset, int whence) {
+		try {
+			FileChannel seekableChannel = fileChannel instanceof FileChannel ? (FileChannel)fileChannel : null;
+			if (whence == VideoDecoder.SEEK_SIZE) {
+				return seekableChannel != null ? seekableChannel.size() : -1;
+			}
+
+			long target;
+			switch (whence) {
+			case VideoDecoder.SEEK_SET:
+				target = offset;
+				break;
+			case VideoDecoder.SEEK_END:
+				if (seekableChannel == null) return -1;
+				target = seekableChannel.size() + offset;
+				break;
+			default:
+				return -1;
+			}
+			if (target < 0) return -1;
+
+			if (seekableChannel != null) {
+				seekableChannel.position(target);
+			} else {
+				if (target < filePosition) {
+					// Stays a stream, as the decoder expects seeking to be expensive
+					openFile(false);
+				}
+				while (filePosition < target) {
+					long skipped = inputStream.skip(target - filePosition);
+					if (skipped <= 0) {
+						// skip() may make no progress without having reached the end
+						if (inputStream.read() < 0) return -1;
+						skipped = 1;
+					}
+					filePosition += skipped;
+				}
+			}
+			filePosition = target;
+			return target;
+		} catch (IOException | RuntimeException e) {
+			// Called from the decoding thread, so nothing would handle the exception. FileHandle.read() throws a
+			// GdxRuntimeException.
+			Gdx.app.error("gdx-video", "Error seeking in file", e);
+			return -1;
 		}
 	}
 
@@ -182,7 +303,7 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 				lastFrameID = Gdx.graphics.getFrameId();
 				// Update video position
 				if (audio != null) {
-					targetPosition = audio.getPosition();
+					targetPosition = audio.getPlayedSeconds();
 				} else {
 					float delta = Gdx.graphics.getDeltaTime();
 					if (delta < 0.25f) {
@@ -191,43 +312,120 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 				}
 			}
 
-			float currentPosition = isFirstFrame ? -1 : (float)decoder.getCurrentFrameTimestamp();
-
-			while (currentPosition <= targetPosition) {
-				ByteBuffer videoData = decoder.nextVideoFrame();
-				if (videoData != null) {
-					float newPosition = (float)decoder.getCurrentFrameTimestamp();
-					if (newPosition == currentPosition) {
-						// A frame was repeated (not loaded fast enough)
+			while (true) {
+				if (pendingFrame == null) {
+					ByteBuffer videoData = decoder.nextVideoFrame();
+					if (videoData == null) {
+						if (isFirstFrame) {
+							return false;
+						}
+						// The video ended. The audio may be longer, so playback ends with it, while the last frame is still shown.
+						if (!isShownLoopPlayed()) {
+							break;
+						}
+						if (looping) {
+							// The decoder couldn't loop by itself
+							rewind();
+						} else {
+							complete();
+						}
+						return newFrame;
+					}
+					int newFramesDisplayed = decoder.getFramesDisplayed();
+					if (newFramesDisplayed == framesDisplayed) {
+						// A frame was repeated (not loaded fast enough). Not told by the timestamp, which may not change
+						// either after a long time of looping, due to its precision.
 						break;
 					}
-					currentPosition = newPosition;
-					if (texture == null) {
-						texture = new Texture(getTextureWidth(), getTextureHeight(), Format.RGB888);
-						texture.setFilter(minFilter, magFilter);
-					}
-					texture.bind();
-					Gdx.gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, getTextureWidth(), getTextureHeight(), 0, GL20.GL_RGB,
-						GL20.GL_UNSIGNED_BYTE, videoData);
-					newFrame = true;
-				} else if (isFirstFrame) {
-					return false;
-				} else if (looping) {
-					resetVideo();
-					return false;
-				} else {
-					playing = false;
-					if (completionListener != null) {
-						completionListener.onCompletionListener(currentFile);
-					}
-					return false;
+					framesDisplayed = newFramesDisplayed;
+					// It stays the decoder's current frame until the next one is taken, so it can be shown later
+					pendingFrame = videoData;
 				}
-			}
 
-			isFirstFrame = false;
+				int frameLoop = decoder.getCurrentFrameLoop();
+				if (frameLoop != loop && !looping) {
+					// The decoder already continued with the next loop before looping got disabled. Playback ends with the
+					// audio of the shown loop, which may be longer than its video. The frame is kept, in case playback
+					// continues with looping enabled again.
+					if (isShownLoopPlayed()) {
+						complete();
+						return newFrame;
+					}
+					break;
+				}
+				// The first frame is shown right away, the others once they are due. Otherwise e.g. the first frame of the
+				// next loop would be shown while the audio of the previous one is still playing.
+				if (!isFirstFrame && decoder.getCurrentFrameTimestamp() > targetPosition) {
+					break;
+				}
+				showFrame(pendingFrame, frameLoop);
+				pendingFrame = null;
+				newFrame = true;
+				isFirstFrame = false;
+			}
 			return newFrame;
 		}
 		return false;
+	}
+
+	/** Uploads the decoder's current frame, which videoData points to.
+	 *
+	 * @param frameLoop The loop the frame is in */
+	private void showFrame (ByteBuffer videoData, int frameLoop) {
+		loop = frameLoop;
+		shownTimestamp = (int)(decoder.getCurrentFramePosition() * 1000);
+		if (texture == null) {
+			texture = new Texture(getTextureWidth(), getTextureHeight(), Format.RGB888);
+			texture.setFilter(minFilter, magFilter);
+		}
+		texture.bind();
+		Gdx.gl.glTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, getTextureWidth(), getTextureHeight(), 0, GL20.GL_RGB,
+			GL20.GL_UNSIGNED_BYTE, videoData);
+	}
+
+	/** @return Whether playback reached the end of the shown frame's loop, which is the end of the audio if it's longer than the
+	 *         video */
+	private boolean isShownLoopPlayed () {
+		return targetPosition >= decoder.getLoopEnd(loop);
+	}
+
+	private void resetShownFrame () {
+		framesDisplayed = 0;
+		loop = 0;
+		shownTimestamp = 0;
+		pendingFrame = null;
+	}
+
+	private void complete () {
+		playing = false;
+		completed = true;
+		if (audio != null) {
+			// Otherwise it keeps playing what the decoder outputs after the end, e.g. the next loop
+			audio.pause();
+		}
+		if (completionListener != null) {
+			completionListener.onCompletionListener(currentFile);
+		}
+	}
+
+	/** Restarts the video from the beginning, preferably without reloading it. */
+	private void rewind () {
+		if (decoder.rewind()) {
+			isFirstFrame = true;
+			targetPosition = 0;
+			resetShownFrame();
+			// Like after loading, update() starts the clock and the audio again
+			startTime = 0;
+			if (audio != null) {
+				// Drops the queued audio, and the audio read from the decoder before rewinding (by resetting it). Not
+				// refilled here, as the decoding thread hasn't read anything yet. update() plays it again.
+				audio.stop();
+				// stop() doesn't reset it if there is no audio device or source
+				audio.reset();
+			}
+		} else {
+			resetVideo();
+		}
 	}
 
 	private void resetVideo () {
@@ -272,17 +470,12 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 			decoder.dispose();
 			decoder = null;
 		}
-		if (inputStream != null) {
-			try {
-				inputStream.close();
-			} catch (IOException e) {
-				Gdx.app.error("gdx-video", "Error closing input stream", e);
-			}
-			inputStream = null;
-		}
+		closeFile();
 
 		startTime = 0;
 		isFirstFrame = true;
+		completed = false;
+		resetShownFrame();
 	}
 
 	@Override
@@ -350,6 +543,9 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 	@Override
 	public void setLooping (boolean looping) {
 		this.looping = looping;
+		if (decoder != null) {
+			decoder.setLooping(looping);
+		}
 	}
 
 	@Override
@@ -359,7 +555,9 @@ abstract public class CommonVideoPlayerDesktop extends AbstractVideoPlayer {
 
 	@Override
 	public int getCurrentTimestamp () {
-		return (int)(decoder.getCurrentFrameTimestamp() * 1000);
+		// Of the shown frame, as the decoder may already be at the next one, e.g. when the next loop started after looping
+		// got disabled. Like before looping was done by the decoder, it starts at 0 with every loop.
+		return shownTimestamp;
 	}
 
 }

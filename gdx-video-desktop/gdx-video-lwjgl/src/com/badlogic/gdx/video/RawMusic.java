@@ -18,6 +18,9 @@ package com.badlogic.gdx.video;
 
 import java.nio.ByteBuffer;
 
+import org.lwjgl.openal.AL10;
+import org.lwjgl.openal.AL11;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.lwjgl.audio.OpenALLwjglAudio;
 import com.badlogic.gdx.backends.lwjgl.audio.OpenALMusic;
@@ -25,42 +28,31 @@ import com.badlogic.gdx.backends.lwjgl.audio.OpenALMusic;
 /** The RawMusic class extends OpenAlMusic, and retrieves it's audio from a VideoDecoder instance.
  *
  * @author Rob Bogie <rob.bogie@codepoke.net> */
-class RawMusic extends OpenALMusic {
-	VideoDecoder decoder;
-	ByteBuffer backBuffer;
+class RawMusic extends OpenALMusic implements DecoderMusic {
+	DecoderAudioBuffer audioBuffer;
 
 	public RawMusic (VideoDecoder decoder, ByteBuffer buffer, int channels, int sampleRate) {
 		super((OpenALLwjglAudio)Gdx.audio, null);
-		this.decoder = decoder;
-		backBuffer = buffer;
-		backBuffer.position(backBuffer.limit());
+		audioBuffer = new DecoderAudioBuffer(decoder, buffer, channels, sampleRate);
 		setup(channels, 16, sampleRate);
 	}
 
 	@Override
 	public int read (byte[] buffer) {
-		int sizeNeeded = buffer.length;
-		int currentIndex = 0;
-
-		while (sizeNeeded > 0) {
-			if (backBuffer.remaining() > 0) {
-				int numBytes = Math.min(backBuffer.remaining(), sizeNeeded);
-				backBuffer.get(buffer, currentIndex, numBytes);
-				currentIndex += numBytes;
-				sizeNeeded -= numBytes;
-			} else {
-				// We need to fill the buffer;
-				backBuffer.rewind();
-				decoder.updateAudioBuffer();
-			}
-		}
-
-		return buffer.length;
+		return audioBuffer.read(buffer);
 	}
 
 	@Override
 	public void reset () {
+		audioBuffer.reset();
+	}
 
+	@Override
+	public double getPlayedSeconds () {
+		int sourceId = getSourceId();
+		if (sourceId == -1) return 0;
+		return audioBuffer.getPlayedSeconds(AL10.alGetSourcei(sourceId, AL10.AL_BUFFERS_QUEUED),
+			AL10.alGetSourcef(sourceId, AL11.AL_SEC_OFFSET));
 	}
 
 }
